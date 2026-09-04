@@ -1,6 +1,6 @@
 import { logoutUser } from "../services/auth";
 
-function DashboardPage({ user }) {
+function DashboardPage({ user, profile }) {
   async function handleLogout() {
     try {
       await logoutUser();
@@ -15,10 +15,20 @@ function DashboardPage({ user }) {
 
       <h2>Dashboard</h2>
 
+      <h2>
+        Welcome, {profile?.creator_name} 👋
+      </h2>
+
       <p>
-        Logged in as:
-        {" "}
-        {user?.email}
+        Niche: {profile?.niche}
+      </p>
+
+      <p>
+        Language: {profile?.language}
+      </p>
+
+      <p>
+        Logged in as: {user?.email}
       </p>
 
       <button>
