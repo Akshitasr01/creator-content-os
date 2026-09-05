@@ -42,3 +42,25 @@ export async function getProjects(userId) {
 
   return data;
 }
+export async function saveProjectAnalysis(
+  projectId,
+  analysis
+) {
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      analysis: analysis,
+      status: "analyzed",
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq("id", projectId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
