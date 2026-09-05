@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from schemas.analysis import (
+    AnalyzeRequest,
+    ContentAnalysis,
+)
+
+from services.ai_service import analyze_content
+
 app = FastAPI(
     title="Creator Content OS API",
     version="1.0.0"
@@ -35,3 +42,12 @@ def health_check():
         "status": "ok",
         "message": "Frontend can communicate with backend"
     }
+
+@app.post(
+    "/api/analyze",
+    response_model=ContentAnalysis
+)
+def analyze_project(
+    request: AnalyzeRequest
+):
+    return analyze_content(request)
