@@ -1,6 +1,17 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { supabase } from "./lib/supabaseClient";
+import {
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+import {
+  supabase,
+} from "./lib/supabaseClient";
 
 import AuthPage from "./pages/AuthPage";
 
@@ -8,15 +19,25 @@ import DashboardPage from "./pages/DashboardPage";
 
 import CreatorOnboarding from "./pages/CreatorOnboarding";
 
+import NewProjectPage from "./pages/NewProjectPage";
+
+
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] =
+    useState(null);
 
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] =
+    useState(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
+
 
   async function loadProfile(userId) {
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("creator_profiles")
       .select("*")
       .eq("user_id", userId)
@@ -29,11 +50,13 @@ function App() {
     setProfile(data);
   }
 
+
   useEffect(() => {
     async function initialize() {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
       setUser(user);
 
@@ -46,38 +69,47 @@ function App() {
 
     initialize();
 
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    } =
+      supabase.auth
+        .onAuthStateChange(
+          async (
+            _event,
+            session
+          ) => {
+            const currentUser =
+              session?.user ?? null;
 
-        const currentUser =
-          session?.user ?? null;
+            setUser(currentUser);
 
-        setUser(currentUser);
+            if (currentUser) {
+              await loadProfile(
+                currentUser.id
+              );
+            } else {
+              setProfile(null);
+            }
+          }
+        );
 
-        if (currentUser) {
-          await loadProfile(
-            currentUser.id
-          );
-        } else {
-          setProfile(null);
-        }
-      }
-    );
 
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
+
   if (loading) {
     return <p>Loading...</p>;
   }
 
+
   if (!user) {
     return <AuthPage />;
   }
+
 
   if (!profile) {
     return (
@@ -88,11 +120,39 @@ function App() {
     );
   }
 
+
   return (
-    <DashboardPage
-      user={user}
-      profile={profile}
-    />
+    <Routes>
+      <Route
+        path="/dashboard"
+        element={
+          <DashboardPage
+            user={user}
+            profile={profile}
+          />
+        }
+      />
+
+      <Route
+        path="/new-project"
+        element={
+          <NewProjectPage
+            user={user}
+            profile={profile}
+          />
+        }
+      />
+
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="/dashboard"
+            replace
+          />
+        }
+      />
+    </Routes>
   );
 }
 
