@@ -6,10 +6,12 @@ import { logoutUser } from "../services/auth";
 import {
   getProjects,
   saveProjectAnalysis,
+  saveProjectIdeas,
 } from "../services/projects";
 
 import {
   analyzeContent,
+  generateContentIdeas,
 } from "../services/api";
 
 
@@ -17,29 +19,39 @@ function DashboardPage({ user, profile }) {
   const navigate = useNavigate();
 
 
-  // Stores all projects belonging to the user
+  // -----------------------------
+  // STATE
+  // -----------------------------
+
+  // Stores all projects belonging to the logged-in user
   const [projects, setProjects] = useState([]);
 
-
-  // Used while loading projects from Supabase
+  // Used while initially loading projects
   const [loading, setLoading] = useState(true);
 
-
-  // Stores the ID of the project currently being analyzed
+  // Stores ID of project currently being analyzed
   const [
     analyzingProjectId,
     setAnalyzingProjectId,
   ] = useState(null);
 
+  // Stores ID of project currently generating ideas
+  const [
+    generatingIdeasProjectId,
+    setGeneratingIdeasProjectId,
+  ] = useState(null);
 
-  // Stores AI analysis errors
+  // Stores errors from AI requests
   const [
     analysisError,
     setAnalysisError,
   ] = useState("");
 
 
-  // Load user's projects when Dashboard opens
+  // -----------------------------
+  // LOAD PROJECTS
+  // -----------------------------
+
   useEffect(() => {
     async function loadProjects() {
       try {
@@ -60,7 +72,10 @@ function DashboardPage({ user, profile }) {
   }, [user.id]);
 
 
-  // Logout
+  // -----------------------------
+  // LOGOUT
+  // -----------------------------
+
   async function handleLogout() {
     try {
       await logoutUser();
@@ -71,38 +86,37 @@ function DashboardPage({ user, profile }) {
   }
 
 
-  // Analyze one project using FastAPI → OpenAI
+  // -----------------------------
+  // ANALYZE PROJECT
+  // -----------------------------
+
   async function handleAnalyze(project) {
     try {
-      // Remember which project is currently being analyzed
       setAnalyzingProjectId(project.id);
 
-      // Remove previous error
       setAnalysisError("");
 
 
-      // STEP 1:
-      // Send project data to FastAPI
-      // FastAPI then sends it to OpenAI
-      const analysis = await analyzeContent({
-        title: project.title,
+      // Send project to FastAPI → OpenAI
+      const analysis =
+        await analyzeContent({
+          title: project.title,
 
-        sourceType:
-          project.source_type,
+          sourceType:
+            project.source_type,
 
-        sourceText:
-          project.source_text,
+          sourceText:
+            project.source_text,
 
-        niche:
-          profile.niche,
+          niche:
+            profile.niche,
 
-        audience:
-          profile.audience,
-      });
+          audience:
+            profile.audience,
+        });
 
 
-      // STEP 2:
-      // Save OpenAI result inside Supabase
+      // Save returned analysis to Supabase
       const updatedProject =
         await saveProjectAnalysis(
           project.id,
@@ -110,8 +124,7 @@ function DashboardPage({ user, profile }) {
         );
 
 
-      // STEP 3:
-      // Update the project in React immediately
+      // Update project immediately in React
       setProjects((currentProjects) =>
         currentProjects.map((item) =>
           item.id === project.id
@@ -128,11 +141,95 @@ function DashboardPage({ user, profile }) {
       );
 
     } finally {
-      // Analysis finished
       setAnalyzingProjectId(null);
     }
   }
 
+
+  // -----------------------------
+  // GENERATE CONTENT IDEAS
+  // -----------------------------
+
+  async function handleGenerateIdeas(project) {
+    try {
+
+      // Project must first be analyzed
+      if (!project.analysis) {
+        setAnalysisError(
+          "Analyze the project before generating ideas."
+        );
+
+        return;
+      }
+
+
+      setGeneratingIdeasProjectId(
+        project.id
+      );
+
+      setAnalysisError("");
+
+
+      // Send analysis + creator profile
+      // to FastAPI → OpenAI
+      const contentIdeas =
+        await generateContentIdeas({
+          title:
+            project.title,
+
+          sourceText:
+            project.source_text,
+
+          niche:
+            profile.niche,
+
+          audience:
+            profile.audience,
+
+          language:
+            profile.language,
+
+          tone:
+            profile.tone,
+
+          analysis:
+            project.analysis,
+        });
+
+
+      // Save ideas inside Supabase
+      const updatedProject =
+        await saveProjectIdeas(
+          project.id,
+          contentIdeas
+        );
+
+
+      // Update React immediately
+      setProjects((currentProjects) =>
+        currentProjects.map((item) =>
+          item.id === project.id
+            ? updatedProject
+            : item
+        )
+      );
+
+    } catch (error) {
+      console.error(error);
+
+      setAnalysisError(
+        error.message
+      );
+
+    } finally {
+      setGeneratingIdeasProjectId(null);
+    }
+  }
+
+
+  // -----------------------------
+  // UI
+  // -----------------------------
 
   return (
     <main>
@@ -157,6 +254,7 @@ function DashboardPage({ user, profile }) {
       </p>
 
 
+      {/* NEW PROJECT BUTTON */}
       <button
         onClick={() =>
           navigate("/new-project")
@@ -174,7 +272,7 @@ function DashboardPage({ user, profile }) {
       </h2>
 
 
-      {/* Loading projects */}
+      {/* PROJECT LOADING */}
       {loading && (
         <p>
           Loading projects...
@@ -182,7 +280,7 @@ function DashboardPage({ user, profile }) {
       )}
 
 
-      {/* No projects */}
+      {/* NO PROJECTS */}
       {!loading &&
         projects.length === 0 && (
           <p>
@@ -192,7 +290,7 @@ function DashboardPage({ user, profile }) {
         )}
 
 
-      {/* AI error */}
+      {/* AI ERROR */}
       {analysisError && (
         <p>
           {analysisError}
@@ -200,7 +298,10 @@ function DashboardPage({ user, profile }) {
       )}
 
 
-      {/* Display all projects */}
+      {/* ------------------------- */}
+      {/* PROJECT LIST */}
+      {/* ------------------------- */}
+
       {projects.map((project) => (
         <div key={project.id}>
 
@@ -219,9 +320,11 @@ function DashboardPage({ user, profile }) {
           </p>
 
 
-          {/* Analyze button */}
-          <button
+          {/* --------------------- */}
+          {/* ANALYZE BUTTON */}
+          {/* --------------------- */}
 
+          <button
             onClick={() =>
               handleAnalyze(project)
             }
@@ -230,24 +333,66 @@ function DashboardPage({ user, profile }) {
               analyzingProjectId ===
               project.id
             }
-
           >
 
-            {analyzingProjectId ===
-            project.id
+            {
+              analyzingProjectId ===
+              project.id
 
-              ? "Analyzing..."
+                ? "Analyzing..."
 
-              : project.analysis
+                : project.analysis
 
-              ? "Re-analyze Content"
+                  ? "Re-analyze Content"
 
-              : "Analyze Content"}
+                  : "Analyze Content"
+            }
 
           </button>
 
 
-          {/* Show analysis only when it exists */}
+          {/* --------------------- */}
+          {/* GENERATE IDEAS BUTTON */}
+          {/* --------------------- */}
+
+          {project.analysis && (
+            <>
+              <br />
+              <br />
+
+              <button
+                onClick={() =>
+                  handleGenerateIdeas(project)
+                }
+
+                disabled={
+                  generatingIdeasProjectId ===
+                  project.id
+                }
+              >
+
+                {
+                  generatingIdeasProjectId ===
+                    project.id
+
+                    ? "Generating Ideas..."
+
+                    : project.content_ideas
+
+                      ? "Regenerate Ideas"
+
+                      : "Generate Content Ideas"
+                }
+
+              </button>
+            </>
+          )}
+
+
+          {/* --------------------- */}
+          {/* CONTENT ANALYSIS */}
+          {/* --------------------- */}
+
           {project.analysis && (
             <div>
 
@@ -292,58 +437,155 @@ function DashboardPage({ user, profile }) {
               </p>
 
 
+              {/* KEY POINTS */}
+
               <h4>
                 Key Points
               </h4>
 
-
               <ul>
-                {project.analysis
-                  .key_points
-                  ?.map(
-                    (point, index) => (
-                      <li key={index}>
-                        {point}
-                      </li>
+
+                {
+                  project.analysis
+                    .key_points
+                    ?.map(
+                      (point, index) => (
+                        <li key={index}>
+                          {point}
+                        </li>
+                      )
                     )
-                  )}
+                }
+
               </ul>
 
+
+              {/* POTENTIAL HOOKS */}
 
               <h4>
                 Potential Hooks
               </h4>
 
-
               <ul>
-                {project.analysis
-                  .hooks
-                  ?.map(
-                    (hook, index) => (
-                      <li key={index}>
-                        {hook}
-                      </li>
+
+                {
+                  project.analysis
+                    .hooks
+                    ?.map(
+                      (hook, index) => (
+                        <li key={index}>
+                          {hook}
+                        </li>
+                      )
                     )
-                  )}
+                }
+
               </ul>
 
+
+              {/* CONTENT ANGLES */}
 
               <h4>
                 Content Angles
               </h4>
 
-
               <ul>
-                {project.analysis
-                  .content_angles
-                  ?.map(
-                    (angle, index) => (
-                      <li key={index}>
-                        {angle}
-                      </li>
+
+                {
+                  project.analysis
+                    .content_angles
+                    ?.map(
+                      (angle, index) => (
+                        <li key={index}>
+                          {angle}
+                        </li>
+                      )
                     )
-                  )}
+                }
+
               </ul>
+
+            </div>
+          )}
+
+
+          {/* --------------------- */}
+          {/* CONTENT IDEAS */}
+          {/* --------------------- */}
+
+          {project.content_ideas && (
+            <div>
+
+              <h4>
+                Content Ideas
+              </h4>
+
+
+              {
+                project.content_ideas
+                  .ideas
+                  ?.map(
+                    (idea, index) => (
+
+                      <div key={index}>
+
+                        <h5>
+                          {index + 1}.{" "}
+                          {idea.title}
+                        </h5>
+
+
+                        <p>
+                          <strong>
+                            Core Message:
+                          </strong>{" "}
+
+                          {
+                            idea.core_message
+                          }
+                        </p>
+
+
+                        <p>
+                          <strong>
+                            Hook:
+                          </strong>{" "}
+
+                          {
+                            idea.hook
+                          }
+                        </p>
+
+
+                        <p>
+                          <strong>
+                            Recommended Format:
+                          </strong>{" "}
+
+                          {
+                            idea.recommended_format
+                          }
+                        </p>
+
+
+                        <p>
+                          <strong>
+                            Why it works:
+                          </strong>{" "}
+
+                          {
+                            idea.why_it_works
+                          }
+                        </p>
+
+
+                        <hr />
+
+                      </div>
+
+                    )
+                  )
+              }
 
             </div>
           )}
@@ -354,6 +596,8 @@ function DashboardPage({ user, profile }) {
         </div>
       ))}
 
+
+      {/* LOGOUT */}
 
       <button
         onClick={handleLogout}
@@ -367,3 +611,15 @@ function DashboardPage({ user, profile }) {
 
 
 export default DashboardPage;
+
+// Project
+//    ↓
+// Analyze Content
+//    ↓
+// Content Analysis appears
+//    ↓
+// Generate Content Ideas
+//    ↓
+// Generating Ideas...
+//    ↓
+// 8 ideas appear

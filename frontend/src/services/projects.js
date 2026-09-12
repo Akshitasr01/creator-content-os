@@ -64,3 +64,25 @@ export async function saveProjectAnalysis(
 
   return data;
 }
+
+export async function saveProjectIdeas(
+  projectId,
+  contentIdeas
+) {
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      content_ideas: contentIdeas,
+      status: "ideas_generated",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}

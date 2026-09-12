@@ -28,3 +28,33 @@ class ContentAnalysis(BaseModel):
     content_angles: list[str] = Field(
         description="Different useful ways the content can be repurposed."
     )
+
+class ContentIdea(BaseModel):
+    title: str
+
+    core_message: str
+
+    hook: str
+
+    recommended_format: str
+
+    why_it_works: str
+
+
+class ContentIdeasResponse(BaseModel):
+    ideas: list[ContentIdea]    
+    
+class GenerateIdeasRequest(BaseModel):
+    title: str
+
+    source_text: str
+
+    niche: str | None = None
+
+    audience: str | None = None
+
+    language: str | None = None
+
+    tone: str | None = None
+
+    analysis: ContentAnalysis    

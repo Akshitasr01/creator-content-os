@@ -4,10 +4,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from schemas.analysis import (
     AnalyzeRequest,
     ContentAnalysis,
+    GenerateIdeasRequest,
+    ContentIdeasResponse,
 )
 
-from services.ai_service import analyze_content
-
+from services.ai_service import (
+    analyze_content,
+    generate_content_ideas,
+)
 app = FastAPI(
     title="Creator Content OS API",
     version="1.0.0"
@@ -51,3 +55,12 @@ def analyze_project(
     request: AnalyzeRequest
 ):
     return analyze_content(request)
+
+@app.post(
+    "/api/generate-ideas",
+    response_model=ContentIdeasResponse
+)
+def generate_ideas(
+    request: GenerateIdeasRequest
+):
+    return generate_content_ideas(request)
