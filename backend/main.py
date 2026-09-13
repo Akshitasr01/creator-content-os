@@ -6,11 +6,14 @@ from schemas.analysis import (
     ContentAnalysis,
     GenerateIdeasRequest,
     ContentIdeasResponse,
+    GenerateReelRequest,
+    ReelContent,
 )
 
 from services.ai_service import (
     analyze_content,
     generate_content_ideas,
+    generate_reel,
 )
 app = FastAPI(
     title="Creator Content OS API",
@@ -64,3 +67,12 @@ def generate_ideas(
     request: GenerateIdeasRequest
 ):
     return generate_content_ideas(request)
+
+@app.post(
+    "/api/generate-reel",
+    response_model=ReelContent
+)
+def create_reel(
+    request: GenerateReelRequest
+):
+    return generate_reel(request)

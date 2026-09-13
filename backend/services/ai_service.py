@@ -8,6 +8,8 @@ from schemas.analysis import (
     ContentAnalysis,
     GenerateIdeasRequest,
     ContentIdeasResponse,
+    GenerateReelRequest,
+    ReelContent,
 )
 
 
@@ -225,3 +227,136 @@ motivational content.
         )
 
     return ideas
+
+def generate_reel(
+    request: GenerateReelRequest
+) -> ReelContent:
+
+    prompt = f"""
+You are the short-form content writer for a
+creator content repurposing platform.
+
+Your job is to turn ONE approved content idea
+into a publishable short-form Reel script.
+
+CREATOR PROFILE
+
+Niche:
+{request.niche or "Not provided"}
+
+Audience:
+{request.audience or "Not provided"}
+
+Preferred language:
+{request.language or "English"}
+
+Tone:
+{request.tone or "Not provided"}
+
+Creator style:
+{request.style_description or "Not provided"}
+
+Things the creator wants to avoid:
+{request.things_to_avoid or "Not provided"}
+
+
+PROJECT
+
+Title:
+{request.title}
+
+
+SELECTED CONTENT IDEA
+
+Idea Title:
+{request.idea.title}
+
+Core Message:
+{request.idea.core_message}
+
+Suggested Hook:
+{request.idea.hook}
+
+Why It Works:
+{request.idea.why_it_works}
+
+
+ORIGINAL SOURCE MATERIAL
+
+{request.source_text}
+
+
+Create one strong short-form Reel.
+
+The result must contain:
+
+1. Hook
+2. Reel script
+3. Caption
+4. CTA
+5. Relevant hashtags
+6. Estimated speaking duration in seconds
+
+
+REQUIREMENTS
+
+The hook should grab attention immediately.
+
+The script should sound natural when spoken,
+not like an article.
+
+Keep the Reel approximately 30-60 seconds.
+
+Do not invent facts that are not supported
+by the original source.
+
+Do not unnecessarily repeat the same idea.
+
+Avoid generic AI phrases such as:
+
+"In today's fast-paced world"
+"Let's dive in"
+"Unlock your potential"
+
+
+LANGUAGE RULES
+
+Write the FINAL content in the creator's
+preferred language.
+
+If the preferred language is English,
+write naturally in English.
+
+If the preferred language is Hindi,
+write naturally in Hindi.
+
+If the preferred language is Hinglish,
+write natural conversational Hinglish using
+English/Roman letters, not Devanagari.
+
+The content should follow the creator's tone
+and style preferences.
+"""
+
+    response = client.responses.parse(
+        model=MODEL,
+
+        input=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+
+        text_format=ReelContent,
+    )
+
+    reel = response.output_parsed
+
+    if reel is None:
+        raise ValueError(
+            "AI did not return a valid Reel."
+        )
+
+    return reel
+

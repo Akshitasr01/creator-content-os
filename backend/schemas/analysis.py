@@ -58,3 +58,36 @@ class GenerateIdeasRequest(BaseModel):
     tone: str | None = None
 
     analysis: ContentAnalysis    
+    
+class GenerateReelRequest(BaseModel):
+    title: str
+
+    source_text: str
+
+    idea: ContentIdea
+
+    niche: str | None = None
+
+    audience: str | None = None
+
+    language: str | None = None
+
+    tone: str | None = None
+
+    style_description: str | None = None
+
+    things_to_avoid: str | None = None
+
+
+class ReelContent(BaseModel):
+    hook: str
+
+    script: str
+
+    caption: str
+
+    cta: str
+
+    hashtags: list[str]
+
+    estimated_duration_seconds: int    
