@@ -12,52 +12,80 @@ import {
 import {
   analyzeContent,
   generateContentIdeas,
+  generateReel,
 } from "../services/api";
+
+import {
+  saveGeneratedContent,
+  getGeneratedContent,
+} from "../services/generatedContent";
 
 
 function DashboardPage({ user, profile }) {
   const navigate = useNavigate();
 
 
-  // -----------------------------
+  // --------------------------------
   // STATE
-  // -----------------------------
+  // --------------------------------
 
-  // Stores all projects belonging to the logged-in user
+  // All projects
   const [projects, setProjects] = useState([]);
 
-  // Used while initially loading projects
+  // Initial dashboard loading
   const [loading, setLoading] = useState(true);
 
-  // Stores ID of project currently being analyzed
+  // All generated content from Supabase
+  const [
+    generatedContent,
+    setGeneratedContent,
+  ] = useState([]);
+
+  // Tracks which Reel is currently being generated
+  const [
+    generatingReelKey,
+    setGeneratingReelKey,
+  ] = useState(null);
+
+  // Tracks which project is being analyzed
   const [
     analyzingProjectId,
     setAnalyzingProjectId,
   ] = useState(null);
 
-  // Stores ID of project currently generating ideas
+  // Tracks which project is generating ideas
   const [
     generatingIdeasProjectId,
     setGeneratingIdeasProjectId,
   ] = useState(null);
 
-  // Stores errors from AI requests
+  // AI / API error
   const [
     analysisError,
     setAnalysisError,
   ] = useState("");
 
 
-  // -----------------------------
-  // LOAD PROJECTS
-  // -----------------------------
+  // --------------------------------
+  // LOAD DASHBOARD DATA
+  // --------------------------------
 
   useEffect(() => {
-    async function loadProjects() {
+    async function loadDashboardData() {
       try {
-        const data = await getProjects(user.id);
+        const projectData =
+          await getProjects(user.id);
 
-        setProjects(data);
+        const generatedData =
+          await getGeneratedContent(
+            user.id
+          );
+
+        setProjects(projectData);
+
+        setGeneratedContent(
+          generatedData
+        );
 
       } catch (error) {
         console.error(error);
@@ -67,14 +95,14 @@ function DashboardPage({ user, profile }) {
       }
     }
 
-    loadProjects();
+    loadDashboardData();
 
   }, [user.id]);
 
 
-  // -----------------------------
+  // --------------------------------
   // LOGOUT
-  // -----------------------------
+  // --------------------------------
 
   async function handleLogout() {
     try {
@@ -86,21 +114,24 @@ function DashboardPage({ user, profile }) {
   }
 
 
-  // -----------------------------
+  // --------------------------------
   // ANALYZE PROJECT
-  // -----------------------------
+  // --------------------------------
 
   async function handleAnalyze(project) {
     try {
-      setAnalyzingProjectId(project.id);
+      setAnalyzingProjectId(
+        project.id
+      );
 
       setAnalysisError("");
 
 
-      // Send project to FastAPI → OpenAI
+      // React → FastAPI → OpenAI
       const analysis =
         await analyzeContent({
-          title: project.title,
+          title:
+            project.title,
 
           sourceType:
             project.source_type,
@@ -116,7 +147,7 @@ function DashboardPage({ user, profile }) {
         });
 
 
-      // Save returned analysis to Supabase
+      // Save analysis in Supabase
       const updatedProject =
         await saveProjectAnalysis(
           project.id,
@@ -124,13 +155,15 @@ function DashboardPage({ user, profile }) {
         );
 
 
-      // Update project immediately in React
-      setProjects((currentProjects) =>
-        currentProjects.map((item) =>
-          item.id === project.id
-            ? updatedProject
-            : item
-        )
+      // Update project in React
+      setProjects(
+        (currentProjects) =>
+          currentProjects.map(
+            (item) =>
+              item.id === project.id
+                ? updatedProject
+                : item
+          )
       );
 
     } catch (error) {
@@ -146,14 +179,15 @@ function DashboardPage({ user, profile }) {
   }
 
 
-  // -----------------------------
+  // --------------------------------
   // GENERATE CONTENT IDEAS
-  // -----------------------------
+  // --------------------------------
 
-  async function handleGenerateIdeas(project) {
+  async function handleGenerateIdeas(
+    project
+  ) {
     try {
 
-      // Project must first be analyzed
       if (!project.analysis) {
         setAnalysisError(
           "Analyze the project before generating ideas."
@@ -170,8 +204,7 @@ function DashboardPage({ user, profile }) {
       setAnalysisError("");
 
 
-      // Send analysis + creator profile
-      // to FastAPI → OpenAI
+      // React → FastAPI → OpenAI
       const contentIdeas =
         await generateContentIdeas({
           title:
@@ -197,7 +230,7 @@ function DashboardPage({ user, profile }) {
         });
 
 
-      // Save ideas inside Supabase
+      // Save ideas in Supabase
       const updatedProject =
         await saveProjectIdeas(
           project.id,
@@ -205,13 +238,15 @@ function DashboardPage({ user, profile }) {
         );
 
 
-      // Update React immediately
-      setProjects((currentProjects) =>
-        currentProjects.map((item) =>
-          item.id === project.id
-            ? updatedProject
-            : item
-        )
+      // Update project immediately
+      setProjects(
+        (currentProjects) =>
+          currentProjects.map(
+            (item) =>
+              item.id === project.id
+                ? updatedProject
+                : item
+          )
       );
 
     } catch (error) {
@@ -222,14 +257,115 @@ function DashboardPage({ user, profile }) {
       );
 
     } finally {
-      setGeneratingIdeasProjectId(null);
+      setGeneratingIdeasProjectId(
+        null
+      );
     }
   }
 
 
-  // -----------------------------
+  // --------------------------------
+  // GENERATE REEL
+  // --------------------------------
+
+  async function handleGenerateReel(
+    project,
+    idea,
+    ideaIndex
+  ) {
+
+    // Makes each idea unique
+    const reelKey =
+      `${project.id}-${ideaIndex}`;
+
+
+    try {
+      setGeneratingReelKey(
+        reelKey
+      );
+
+      setAnalysisError("");
+
+
+      // React → FastAPI → OpenAI
+      const reel =
+        await generateReel({
+          title:
+            project.title,
+
+          sourceText:
+            project.source_text,
+
+          idea:
+            idea,
+
+          niche:
+            profile.niche,
+
+          audience:
+            profile.audience,
+
+          language:
+            profile.language,
+
+          tone:
+            profile.tone,
+
+          styleDescription:
+            profile.style_description,
+
+          thingsToAvoid:
+            profile.things_to_avoid,
+        });
+
+
+      // Save generated Reel in Supabase
+      const savedContent =
+        await saveGeneratedContent({
+          userId:
+            user.id,
+
+          projectId:
+            project.id,
+
+          ideaIndex:
+            ideaIndex,
+
+          contentType:
+            "reel",
+
+          platform:
+            "instagram",
+
+          content:
+            reel,
+        });
+
+
+      // Show generated Reel immediately
+      setGeneratedContent(
+        (currentContent) => [
+          savedContent,
+          ...currentContent,
+        ]
+      );
+
+    } catch (error) {
+      console.error(error);
+
+      setAnalysisError(
+        error.message
+      );
+
+    } finally {
+      setGeneratingReelKey(null);
+    }
+  }
+
+
+  // --------------------------------
   // UI
-  // -----------------------------
+  // --------------------------------
 
   return (
     <main>
@@ -255,6 +391,7 @@ function DashboardPage({ user, profile }) {
 
 
       {/* NEW PROJECT BUTTON */}
+
       <button
         onClick={() =>
           navigate("/new-project")
@@ -272,7 +409,8 @@ function DashboardPage({ user, profile }) {
       </h2>
 
 
-      {/* PROJECT LOADING */}
+      {/* DASHBOARD LOADING */}
+
       {loading && (
         <p>
           Loading projects...
@@ -281,6 +419,7 @@ function DashboardPage({ user, profile }) {
 
 
       {/* NO PROJECTS */}
+
       {!loading &&
         projects.length === 0 && (
           <p>
@@ -290,7 +429,8 @@ function DashboardPage({ user, profile }) {
         )}
 
 
-      {/* AI ERROR */}
+      {/* ERROR */}
+
       {analysisError && (
         <p>
           {analysisError}
@@ -298,11 +438,12 @@ function DashboardPage({ user, profile }) {
       )}
 
 
-      {/* ------------------------- */}
+      {/* -------------------------------- */}
       {/* PROJECT LIST */}
-      {/* ------------------------- */}
+      {/* -------------------------------- */}
 
       {projects.map((project) => (
+
         <div key={project.id}>
 
           <h3>
@@ -320,9 +461,9 @@ function DashboardPage({ user, profile }) {
           </p>
 
 
-          {/* --------------------- */}
+          {/* -------------------------- */}
           {/* ANALYZE BUTTON */}
-          {/* --------------------- */}
+          {/* -------------------------- */}
 
           <button
             onClick={() =>
@@ -351,9 +492,9 @@ function DashboardPage({ user, profile }) {
           </button>
 
 
-          {/* --------------------- */}
+          {/* -------------------------- */}
           {/* GENERATE IDEAS BUTTON */}
-          {/* --------------------- */}
+          {/* -------------------------- */}
 
           {project.analysis && (
             <>
@@ -362,7 +503,9 @@ function DashboardPage({ user, profile }) {
 
               <button
                 onClick={() =>
-                  handleGenerateIdeas(project)
+                  handleGenerateIdeas(
+                    project
+                  )
                 }
 
                 disabled={
@@ -373,7 +516,7 @@ function DashboardPage({ user, profile }) {
 
                 {
                   generatingIdeasProjectId ===
-                    project.id
+                  project.id
 
                     ? "Generating Ideas..."
 
@@ -389,9 +532,9 @@ function DashboardPage({ user, profile }) {
           )}
 
 
-          {/* --------------------- */}
+          {/* -------------------------- */}
           {/* CONTENT ANALYSIS */}
-          {/* --------------------- */}
+          {/* -------------------------- */}
 
           {project.analysis && (
             <div>
@@ -449,8 +592,15 @@ function DashboardPage({ user, profile }) {
                   project.analysis
                     .key_points
                     ?.map(
-                      (point, index) => (
-                        <li key={index}>
+                      (
+                        point,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
                           {point}
                         </li>
                       )
@@ -472,8 +622,15 @@ function DashboardPage({ user, profile }) {
                   project.analysis
                     .hooks
                     ?.map(
-                      (hook, index) => (
-                        <li key={index}>
+                      (
+                        hook,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
                           {hook}
                         </li>
                       )
@@ -495,8 +652,15 @@ function DashboardPage({ user, profile }) {
                   project.analysis
                     .content_angles
                     ?.map(
-                      (angle, index) => (
-                        <li key={index}>
+                      (
+                        angle,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
                           {angle}
                         </li>
                       )
@@ -509,9 +673,9 @@ function DashboardPage({ user, profile }) {
           )}
 
 
-          {/* --------------------- */}
+          {/* -------------------------------- */}
           {/* CONTENT IDEAS */}
-          {/* --------------------- */}
+          {/* -------------------------------- */}
 
           {project.content_ideas && (
             <div>
@@ -525,65 +689,250 @@ function DashboardPage({ user, profile }) {
                 project.content_ideas
                   .ideas
                   ?.map(
-                    (idea, index) => (
+                    (
+                      idea,
+                      index
+                    ) => {
 
-                      <div key={index}>
+                      // Reel generated from this exact idea
+                      const ideaReels =
+                        generatedContent.filter(
+                          (item) =>
+                            item.project_id ===
+                              project.id &&
 
-                        <h5>
-                          {index + 1}.{" "}
-                          {idea.title}
-                        </h5>
+                            item.idea_index ===
+                              index &&
+
+                            item.content_type ===
+                              "reel"
+                        );
 
 
-                        <p>
-                          <strong>
-                            Core Message:
-                          </strong>{" "}
+                      const reelKey =
+                        `${project.id}-${index}`;
+
+
+                      return (
+
+                        <div key={index}>
+
+                          <h5>
+                            {index + 1}.{" "}
+                            {idea.title}
+                          </h5>
+
+
+                          <p>
+                            <strong>
+                              Core Message:
+                            </strong>{" "}
+
+                            {
+                              idea.core_message
+                            }
+                          </p>
+
+
+                          <p>
+                            <strong>
+                              Hook:
+                            </strong>{" "}
+
+                            {
+                              idea.hook
+                            }
+                          </p>
+
+
+                          <p>
+                            <strong>
+                              Recommended Format:
+                            </strong>{" "}
+
+                            {
+                              idea.recommended_format
+                            }
+                          </p>
+
+
+                          <p>
+                            <strong>
+                              Why it works:
+                            </strong>{" "}
+
+                            {
+                              idea.why_it_works
+                            }
+                          </p>
+
+
+                          {/* ------------------ */}
+                          {/* GENERATE REEL */}
+                          {/* STEP 103 */}
+                          {/* ------------------ */}
+
+                          <button
+                            onClick={() =>
+                              handleGenerateReel(
+                                project,
+                                idea,
+                                index
+                              )
+                            }
+
+                            disabled={
+                              generatingReelKey ===
+                              reelKey
+                            }
+                          >
+
+                            {
+                              generatingReelKey ===
+                              reelKey
+
+                                ? "Generating Reel..."
+
+                                : "Generate Reel"
+                            }
+
+                          </button>
+
+
+                          {/* ------------------ */}
+                          {/* DISPLAY REELS */}
+                          {/* STEP 104 */}
+                          {/* ------------------ */}
 
                           {
-                            idea.core_message
+                            ideaReels.map(
+                              (item) => (
+
+                                <div
+                                  key={
+                                    item.id
+                                  }
+                                >
+
+                                  <h6>
+                                    Generated Reel
+                                  </h6>
+
+
+                                  <p>
+                                    <strong>
+                                      Hook:
+                                    </strong>{" "}
+
+                                    {
+                                      item
+                                        .content
+                                        .hook
+                                    }
+                                  </p>
+
+
+                                  <p>
+                                    <strong>
+                                      Script:
+                                    </strong>
+                                  </p>
+
+                                  <p>
+                                    {
+                                      item
+                                        .content
+                                        .script
+                                    }
+                                  </p>
+
+
+                                  <p>
+                                    <strong>
+                                      Caption:
+                                    </strong>{" "}
+
+                                    {
+                                      item
+                                        .content
+                                        .caption
+                                    }
+                                  </p>
+
+
+                                  <p>
+                                    <strong>
+                                      CTA:
+                                    </strong>{" "}
+
+                                    {
+                                      item
+                                        .content
+                                        .cta
+                                    }
+                                  </p>
+
+
+                                  <p>
+                                    <strong>
+                                      Hashtags:
+                                    </strong>{" "}
+
+                                    {
+                                      item
+                                        .content
+                                        .hashtags
+                                        ?.join(" ")
+                                    }
+                                  </p>
+
+
+                                  <p>
+                                    <strong>
+                                      Estimated Duration:
+                                    </strong>{" "}
+
+                                    {
+                                      item
+                                        .content
+                                        .estimated_duration_seconds
+                                    }{" "}
+                                    seconds
+                                  </p>
+
+
+                                  {/* COPY SCRIPT */}
+
+                                  <button
+                                    onClick={() =>
+                                      navigator
+                                        .clipboard
+                                        .writeText(
+                                          item
+                                            .content
+                                            .script
+                                        )
+                                    }
+                                  >
+                                    Copy Script
+                                  </button>
+
+
+                                  <hr />
+
+                                </div>
+
+                              )
+                            )
                           }
-                        </p>
 
 
-                        <p>
-                          <strong>
-                            Hook:
-                          </strong>{" "}
+                          <hr />
 
-                          {
-                            idea.hook
-                          }
-                        </p>
+                        </div>
 
-
-                        <p>
-                          <strong>
-                            Recommended Format:
-                          </strong>{" "}
-
-                          {
-                            idea.recommended_format
-                          }
-                        </p>
-
-
-                        <p>
-                          <strong>
-                            Why it works:
-                          </strong>{" "}
-
-                          {
-                            idea.why_it_works
-                          }
-                        </p>
-
-
-                        <hr />
-
-                      </div>
-
-                    )
+                      );
+                    }
                   )
               }
 
@@ -594,10 +943,13 @@ function DashboardPage({ user, profile }) {
           <hr />
 
         </div>
+
       ))}
 
 
+      {/* -------------------------------- */}
       {/* LOGOUT */}
+      {/* -------------------------------- */}
 
       <button
         onClick={handleLogout}
@@ -611,15 +963,3 @@ function DashboardPage({ user, profile }) {
 
 
 export default DashboardPage;
-
-// Project
-//    ↓
-// Analyze Content
-//    ↓
-// Content Analysis appears
-//    ↓
-// Generate Content Ideas
-//    ↓
-// Generating Ideas...
-//    ↓
-// 8 ideas appear

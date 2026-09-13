@@ -96,3 +96,59 @@ export async function generateContentIdeas({
 
   return await response.json();
 }
+
+export async function generateReel({
+  title,
+  sourceText,
+  idea,
+  niche,
+  audience,
+  language,
+  tone,
+  styleDescription,
+  thingsToAvoid,
+}) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/generate-reel`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        title: title,
+
+        source_text: sourceText,
+
+        idea: idea,
+
+        niche: niche,
+
+        audience: audience,
+
+        language: language,
+
+        tone: tone,
+
+        style_description:
+          styleDescription,
+
+        things_to_avoid:
+          thingsToAvoid,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText =
+      await response.text();
+
+    throw new Error(
+      `Reel generation failed: ${errorText}`
+    );
+  }
+
+  return await response.json();
+}
