@@ -1,216 +1,58 @@
-import { useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { Navigate, useNavigate } from "react-router-dom";
 
-function CreatorOnboarding({ user, onComplete }) {
-  const [creatorName, setCreatorName] =
-    useState("");
+import Logo from "../components/Logo";
+import ProfileForm from "../components/ProfileForm";
+import { Alert, Button, PageSpinner } from "../components/ui";
+import { useProfile } from "../hooks/useProfile";
+import { useToast } from "../hooks/useToast";
+import { api } from "../services/api";
 
-  const [niche, setNiche] =
-    useState("");
+/** One focused onboarding form, shown once after sign-up (PDF step 7). */
+export default function CreatorOnboarding() {
+  const { profile, loading, error, reload, setProfile } = useProfile();
+  const navigate = useNavigate();
+  const toast = useToast();
 
-  const [audience, setAudience] =
-    useState("");
+  if (loading) return <PageSpinner />;
+  if (profile) return <Navigate to="/dashboard" replace />;
 
-  const [language, setLanguage] =
-    useState("English");
-
-  const [tone, setTone] =
-    useState("");
-
-  const [styleDescription, setStyleDescription] =
-    useState("");
-
-  const [thingsToAvoid, setThingsToAvoid] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("creator_profiles")
-      .insert({
-        user_id: user.id,
-
-        creator_name: creatorName,
-
-        niche,
-
-        audience,
-
-        language,
-
-        tone,
-
-        style_description: styleDescription,
-
-        things_to_avoid: thingsToAvoid,
-      })
-      .select()
-      .single();
-
-    setLoading(false);
-
-    if (error) {
-      console.error(error);
-
-      setMessage(error.message);
-
-      return;
+  async function handleSubmit(values) {
+    try {
+      const saved = await api.saveProfile(values);
+      setProfile(saved);
+      toast.success("Profile saved. Let's create your first project.");
+      navigate("/projects/new", { replace: true });
+    } catch (err) {
+      toast.error(err.message);
     }
-
-    onComplete(data);
   }
 
   return (
-    <main>
-      <h1>Create your creator profile</h1>
-
-      <p>
-        This helps the AI understand
-        how you create content.
-      </p>
-
-      <form onSubmit={handleSubmit}>
-
-        <div>
-          <label>Creator Name</label>
-
-          <br />
-
-          <input
-            value={creatorName}
-            onChange={(e) =>
-              setCreatorName(e.target.value)
-            }
-            required
-          />
+    <div className="min-h-screen bg-slate-50">
+      <header className="mx-auto flex h-16 max-w-3xl items-center px-4 sm:px-6">
+        <Logo />
+      </header>
+      <main className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+        <div className="mb-8 mt-4">
+          <p className="text-sm font-medium text-brand-600">Step 1 of 2 · Creator profile</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Tell us how you create
+          </h1>
+          <p className="mt-2 text-slate-600">
+            This takes about two minutes. Everything here can be edited later in Settings.
+          </p>
         </div>
-
-        <br />
-
-        <div>
-          <label>Niche</label>
-
-          <br />
-
-          <input
-            placeholder="Coding, Finance, Fitness..."
-            value={niche}
-            onChange={(e) =>
-              setNiche(e.target.value)
-            }
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>Target Audience</label>
-
-          <br />
-
-          <textarea
-            value={audience}
-            onChange={(e) =>
-              setAudience(e.target.value)
-            }
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>Language</label>
-
-          <br />
-
-          <select
-            value={language}
-            onChange={(e) =>
-              setLanguage(e.target.value)
-            }
+        {error && (
+          <Alert
+            className="mb-6"
+            title="Couldn't check for an existing profile"
+            action={<Button variant="secondary" size="sm" onClick={reload}>Retry</Button>}
           >
-            <option>English</option>
-            <option>Hindi</option>
-            <option>Hinglish</option>
-          </select>
-        </div>
-
-        <br />
-
-        <div>
-          <label>Tone</label>
-
-          <br />
-
-          <input
-            placeholder="Casual, professional, funny..."
-            value={tone}
-            onChange={(e) =>
-              setTone(e.target.value)
-            }
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Describe your content style
-          </label>
-
-          <br />
-
-          <textarea
-            value={styleDescription}
-            onChange={(e) =>
-              setStyleDescription(e.target.value)
-            }
-          />
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Things AI should avoid
-          </label>
-
-          <br />
-
-          <textarea
-            value={thingsToAvoid}
-            onChange={(e) =>
-              setThingsToAvoid(e.target.value)
-            }
-          />
-        </div>
-
-        <br />
-
-        <button
-          type="submit"
-          disabled={loading}
-        >
-          {loading
-            ? "Saving..."
-            : "Save Profile"}
-        </button>
-
-        {message && <p>{message}</p>}
-
-      </form>
-    </main>
+            {error}
+          </Alert>
+        )}
+        <ProfileForm onSubmit={handleSubmit} submitLabel="Save and continue" />
+      </main>
+    </div>
   );
 }
-
-export default CreatorOnboarding;

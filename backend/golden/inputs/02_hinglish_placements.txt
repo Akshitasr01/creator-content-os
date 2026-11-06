@@ -1,0 +1,12 @@
+TITLE: Placement season ke 5 galtiyan
+SOURCE_TYPE: transcript
+
+Dekho bhai, placement season shuru hone wala hai aur main har saal same galtiyan dekhta hoon. Pehli galti: log resume mein 15 projects daal dete hain. Recruiter ke paas 30 seconds hote hain. Do strong projects rakho jinke baare mein tum 20 minute baat kar sako.
+
+Dusri galti: sirf LeetCode grind karna aur CS fundamentals ignore karna. OS, DBMS, Computer Networks ke basic questions har interview mein aate hain. Har din 30 minute fundamentals ko do.
+
+Teesri galti: mock interviews na dena. Tum apne room mein code kar lete ho, but jab koi samne baith ke dekh raha hota hai toh dimaag freeze ho jata hai. Friends ke saath kam se kam 5 mock interviews karo.
+
+Chauthi galti: rejection ko personal le lena. Mere ek student ko 11 companies ne reject kiya aur 12th company mein 18 LPA ka offer mila. Rejection ek data point hai, verdict nahi.
+
+Paanchvi galti: last moment pe aptitude prepare karna. Bahut companies ka pehla round aptitude hota hai aur log wahi pe filter ho jaate hain. Do hafte pehle se roz 20 questions karo.

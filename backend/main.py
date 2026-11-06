@@ -1,78 +1,63 @@
-from fastapi import FastAPI
+"""Creator Content OS API.
+
+Run from the backend folder:
+    .venv\\Scripts\\activate
+    uvicorn main:app --reload
+Interactive API docs: http://127.0.0.1:8000/docs
+"""
+
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from schemas.analysis import (
-    AnalyzeRequest,
-    ContentAnalysis,
-    GenerateIdeasRequest,
-    ContentIdeasResponse,
-    GenerateReelRequest,
-    ReelContent,
-)
+from api import content, creators, feedback, generate, health, projects
+from core.config import get_settings
+from core.errors import AppError
 
-from services.ai_service import (
-    analyze_content,
-    generate_content_ideas,
-    generate_reel,
-)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("creator_content_os")
+# httpx logs every request URL at INFO; keep logs focused on our own messages.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+settings = get_settings()
+
 app = FastAPI(
     title="Creator Content OS API",
-    version="1.0.0"
+    version="1.0.0",
+    description="Turn one long-form piece of content into platform-specific content in the creator's voice.",
 )
-
-# Frontend addresses that are allowed
-# to communicate with this backend.
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,  # auth uses a Bearer header, not cookies
+    allow_methods=["GET", "POST", "PUT", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
-@app.get("/")
+@app.exception_handler(AppError)
+def handle_app_error(_: Request, error: AppError):
+    return JSONResponse(status_code=error.status_code, content={"detail": error.message, "code": error.code})
+
+
+@app.exception_handler(Exception)
+def handle_unexpected_error(_: Request, error: Exception):
+    logger.exception("Unhandled error: %s", type(error).__name__)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our side. Please try again.", "code": "server_error"},
+    )
+
+
+@app.get("/", include_in_schema=False)
 def root():
-    return {
-        "message": "Creator Content OS backend is running"
-    }
+    return {"message": "Creator Content OS backend is running", "docs": "/docs"}
 
 
-@app.get("/api/health")
-def health_check():
-    return {
-        "status": "ok",
-        "message": "Frontend can communicate with backend"
-    }
+for router in (health.router, creators.router, projects.router, generate.router, content.router, feedback.router):
+    app.include_router(router)
 
-@app.post(
-    "/api/analyze",
-    response_model=ContentAnalysis
-)
-def analyze_project(
-    request: AnalyzeRequest
-):
-    return analyze_content(request)
-
-@app.post(
-    "/api/generate-ideas",
-    response_model=ContentIdeasResponse
-)
-def generate_ideas(
-    request: GenerateIdeasRequest
-):
-    return generate_content_ideas(request)
-
-@app.post(
-    "/api/generate-reel",
-    response_model=ReelContent
-)
-def create_reel(
-    request: GenerateReelRequest
-):
-    return generate_reel(request)
+logger.info("AI provider: %s", settings.ai_provider)

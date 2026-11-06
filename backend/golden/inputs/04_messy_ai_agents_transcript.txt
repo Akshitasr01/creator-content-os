@@ -1,0 +1,14 @@
+TITLE: AI agents tutorial (auto transcript, unedited)
+SOURCE_TYPE: transcript
+
+okay so uh yeah today we're gonna build uh an agent and um before that like what even is an agent right so an agent is basically uh an LLM in a loop it gets a goal it decides what tool to call it calls the tool looks at the result and decides again um so yeah that's it that's the whole thing people make it sound super complicated
+
+so the three parts are like uh the model the tools and the loop and um the tools are just functions you describe with like a name a description and the parameters and the model picks one
+
+uh the biggest mistake i see is people give the agent like 40 tools on day one and then it gets confused and picks the wrong one um start with two or three tools seriously
+
+second mistake no stopping condition so the agent just loops forever and burns your api credits uh always add a max number of steps like 10
+
+third thing log everything like every tool call every result because when it breaks and it will break you need to see why um
+
+okay so let me share my screen uh can you see it yeah okay so here's the code

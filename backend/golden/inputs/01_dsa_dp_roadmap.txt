@@ -1,0 +1,16 @@
+TITLE: How to learn Dynamic Programming without hating it
+SOURCE_TYPE: transcript
+
+So today I want to talk about dynamic programming, because every week someone in my DMs says DP is impossible. It's not impossible. You're just learning it in the wrong order.
+
+Most students open a DP sheet, see a tabulation solution with a 2D array, and try to memorise it. That is the mistake. You cannot memorise your way through DP because every problem has a slightly different state.
+
+Step one is recursion. Write the brute force recursive solution first. Ask yourself: what is the smallest version of this problem, and how does the bigger answer depend on smaller answers? If you can't write the recursion, you don't understand the problem yet.
+
+Step two is memoization. Notice that your recursion is solving the same subproblem again and again. Add a cache. That's it. Fibonacci goes from exponential to linear just by storing results.
+
+Step three is tabulation. Now flip the recursion upside down and fill a table from the base case. This is where the 2D arrays come from, and now they make sense because you derived them.
+
+Step four, optional, is space optimisation. Often you only need the previous row, so you can go from O(n*m) space to O(m).
+
+In my last batch, students who followed recursion, then memoization, then tabulation solved roughly twice as many DP problems in a month compared to students who jumped straight to tabulation. Start with ten classic problems: climbing stairs, house robber, coin change, longest common subsequence, 0/1 knapsack, and so on. Don't do two hundred random problems. Do ten deeply.
