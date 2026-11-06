@@ -106,6 +106,11 @@ source.
 def generate_content_ideas(
     request: GenerateIdeasRequest
 ) -> ContentIdeasResponse:
+    sample_posts_text = (
+        "\n\n---\n\n".join(request.sample_posts)
+        if request.sample_posts
+        else "No sample posts provided."
+    )    
 
     prompt = f"""
 You are the content strategy engine for a
@@ -228,9 +233,16 @@ motivational content.
 
     return ideas
 
+
 def generate_reel(
     request: GenerateReelRequest
 ) -> ReelContent:
+
+    sample_posts_text = (
+        "\n\n---\n\n".join(request.sample_posts)
+        if request.sample_posts
+        else "No sample posts provided."
+    )
 
     prompt = f"""
 You are the short-form content writer for a
@@ -253,18 +265,31 @@ Preferred language:
 Tone:
 {request.tone or "Not provided"}
 
-Creator style:
+Creator style preferences:
 {request.style_description or "Not provided"}
 
-Things the creator wants to avoid:
+Things to avoid:
 {request.things_to_avoid or "Not provided"}
 
+Sample posts — style references only:
+{sample_posts_text}
+
+CREATOR VOICE INSTRUCTIONS
+
+- Use sample posts only to infer writing style, such as formality,
+  sentence length, rhythm, hooks, language mixing, and emoji usage.
+- Do not copy or closely paraphrase their wording.
+- Do not reuse their claims, examples, opinions, or factual content.
+- Base the Reel content on the original source material and selected idea.
+- Follow the creator's saved style preferences and things to avoid.
+- Keep factual claims grounded in the original source content.
+- Preserve the selected idea's core message.
+- Follow the creator's preferred language and tone.
 
 PROJECT
 
 Title:
 {request.title}
-
 
 SELECTED CONTENT IDEA
 
@@ -280,16 +305,13 @@ Suggested Hook:
 Why It Works:
 {request.idea.why_it_works}
 
-
 ORIGINAL SOURCE MATERIAL
 
 {request.source_text}
 
-
 Create one strong short-form Reel.
 
 The result must contain:
-
 1. Hook
 2. Reel script
 3. Caption
@@ -297,11 +319,9 @@ The result must contain:
 5. Relevant hashtags
 6. Estimated speaking duration in seconds
 
-
 REQUIREMENTS
 
 The hook should grab attention immediately.
-
 The script should sound natural when spoken,
 not like an article.
 
@@ -313,11 +333,9 @@ by the original source.
 Do not unnecessarily repeat the same idea.
 
 Avoid generic AI phrases such as:
-
 "In today's fast-paced world"
 "Let's dive in"
 "Unlock your potential"
-
 
 LANGUAGE RULES
 
@@ -340,14 +358,12 @@ and style preferences.
 
     response = client.responses.parse(
         model=MODEL,
-
         input=[
             {
                 "role": "user",
                 "content": prompt,
             }
         ],
-
         text_format=ReelContent,
     )
 
@@ -359,4 +375,3 @@ and style preferences.
         )
 
     return reel
-

@@ -63,6 +63,9 @@ export async function generateContentIdeas({
   audience,
   language,
   tone,
+  styleDescription,
+  thingsToAvoid,
+  samplePosts,
   analysis,
 }) {
   const response = await fetch(
@@ -81,6 +84,9 @@ export async function generateContentIdeas({
         audience: audience,
         language: language,
         tone: tone,
+        style_description:styleDescription,
+        things_to_avoid:thingsToAvoid,
+        sample_posts: samplePosts,
         analysis: analysis,
       }),
     }
@@ -107,6 +113,7 @@ export async function generateReel({
   tone,
   styleDescription,
   thingsToAvoid,
+  samplePosts,
 }) {
   const response = await fetch(
     `${API_BASE_URL}/api/generate-reel`,
@@ -137,6 +144,7 @@ export async function generateReel({
 
         things_to_avoid:
           thingsToAvoid,
+        sample_posts: samplePosts,
       }),
     }
   );

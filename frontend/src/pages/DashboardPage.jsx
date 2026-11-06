@@ -224,6 +224,11 @@ function DashboardPage({ user, profile }) {
 
           tone:
             profile.tone,
+          
+          styleDescription:profile.style_description,
+
+          thingsToAvoid:profile.things_to_avoid,
+          samplePosts:profile.sample_posts || [],
 
           analysis:
             project.analysis,
@@ -316,6 +321,8 @@ function DashboardPage({ user, profile }) {
 
           thingsToAvoid:
             profile.things_to_avoid,
+          samplePosts:
+            profile.sample_posts || [],  
         });
 
 
@@ -398,6 +405,16 @@ function DashboardPage({ user, profile }) {
         }
       >
         + New Project
+      </button>
+      
+      {" "}
+
+      <button
+        onClick={() =>
+          navigate("/creator-voice")
+        }
+      >
+        Creator Voice
       </button>
 
 

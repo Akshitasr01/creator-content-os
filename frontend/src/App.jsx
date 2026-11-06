@@ -21,6 +21,8 @@ import CreatorOnboarding from "./pages/CreatorOnboarding";
 
 import NewProjectPage from "./pages/NewProjectPage";
 
+import CreatorVoicePage from "./pages/CreatorVoicePage";
+
 
 function App() {
   const [user, setUser] =
@@ -139,6 +141,16 @@ function App() {
           <NewProjectPage
             user={user}
             profile={profile}
+          />
+        }
+      />
+      <Route
+        path="/creator-voice"
+        element={
+          <CreatorVoicePage
+            user={user}
+            profile={profile}
+            onProfileUpdate={setProfile}
           />
         }
       />

@@ -57,8 +57,14 @@ class GenerateIdeasRequest(BaseModel):
 
     tone: str | None = None
 
-    analysis: ContentAnalysis    
-    
+    style_description: str | None = None
+
+    things_to_avoid: str | None = None
+
+    sample_posts: list[str] = Field(
+        default_factory=list
+    )
+    analysis: ContentAnalysis   
 class GenerateReelRequest(BaseModel):
     title: str
 
@@ -77,6 +83,10 @@ class GenerateReelRequest(BaseModel):
     style_description: str | None = None
 
     things_to_avoid: str | None = None
+
+    sample_posts: list[str] = Field(
+        default_factory=list
+    )
 
 
 class ReelContent(BaseModel):
