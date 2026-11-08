@@ -48,3 +48,11 @@ urllib3==2.7.0
 uvicorn==0.52.4
 watchfiles==1.2.0
 websockets==17.1
+
+# AI Video-to-Reels (free local transcription)
+faster-whisper==1.2.1
+ctranslate2==4.8.5
+av==19.0.2
+onnxruntime==1.31.1
+tokenizers==0.23.3
+huggingface_hub==2.4.0

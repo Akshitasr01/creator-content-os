@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import StatusBadge from "../components/StatusBadge";
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from "../components/ui";
+import RecentVideos from "../components/video/RecentVideos";
 import { useApiData } from "../hooks/useApiData";
 import { useProfile } from "../hooks/useProfile";
 import { formatDate, SOURCE_TYPES } from "../lib/constants";
@@ -28,7 +29,7 @@ export default function DashboardPage() {
 
   const newProjectButton = (
     <Link
-      to="/projects/new"
+      to="/create"
       className="inline-flex h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
     >
       + New project
@@ -98,6 +99,8 @@ export default function DashboardPage() {
           </ul>
         )}
       </section>
+
+      <RecentVideos />
     </>
   );
 }

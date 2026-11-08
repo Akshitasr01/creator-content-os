@@ -169,6 +169,98 @@ npm run build
 - Generation is synchronous (the request waits, up to ~1 min for 6 assets). Background jobs are a V2 item.
 - The per-minute rate limiter is in memory (per backend process); the daily limit is stored in the database.
 - Token cost is only estimated if you set the per-1M-token prices.
-- Only pasted text input; no file upload, YouTube or audio yet (V2).
+- Text projects take pasted text only; video/audio files go through AI Video-to-Reels (below). YouTube and other platform links are intentionally not downloaded.
 - Feedback is collected but not yet used to adapt generation (by design: collect data first).
 - Production deployment (Vercel + Render/Railway) is not set up yet; set `CORS_ORIGINS` to your real domain when deploying.
+
+---
+
+## AI Video-to-Reels Generator
+
+Turn a long-form video into up to **10 vertical (9:16) short clips** with burned-in subtitles, plus a hook,
+caption, hashtags, CTA and the reason each moment was chosen.
+
+### Workflow
+**New project** → choose a source:
+
+| Source | What you get |
+|---|---|
+| **Upload video** (.mp4 .mov .m4v .webm .mkv) | Transcript + AI-selected moments + **rendered MP4 clips** you can preview and download |
+| **Video link** | Same as upload, for a **direct https link to a media file you own** (e.g. your CDN/cloud storage, ending in .mp4 …) |
+| **Audio upload** (.mp3 .m4a .wav .aac .ogg .flac) | Transcript + timestamped clip **suggestions** (no video is rendered) |
+| **Text content** | The existing text pipeline (brief → ideas → Reels/LinkedIn/Carousel) |
+
+Processing runs in the background with live status: `queued → downloading (links) → transcribing → selecting → rendering → completed` (or `failed` with a reason and a **Retry** that resumes from the failed step).
+In the clip view you can edit title, hook, caption, hashtags, CTA and start/end times. Changing times marks the
+old video as outdated, and **Render video** produces the new one. **Use transcript for posts** sends the transcript
+into the existing text pipeline.
+
+**Suggestions are never shown as videos:** a clip only offers preview/download when an MP4 was actually rendered.
+
+### Why YouTube / Instagram / TikTok links are not supported
+Those platforms do not permit downloading by third-party tools, so the app never scrapes them. Download your own
+video from the platform's creator tools (e.g. YouTube Studio → Content → ⋮ → Download) and use **Upload video**.
+Link downloads are https-only, size-capped, re-check every redirect, and block private/local network addresses.
+
+### How it works
+```
+upload / link ──> backend/media_storage/<user>/<video>/source.*      (stays on the backend disk)
+      │
+      ├─ ffprobe: duration, video/audio streams
+      ├─ faster-whisper (local, free): timestamped transcript + word timings
+      ├─ llm_service (AI_PROVIDER): pick the strongest self-contained moments
+      │     └─ enforced in code: whole sentences only, length limits, no overlap,
+      │        transcript excerpt copied from the real transcript
+      ├─ FFmpeg: 720x1280 H.264 + AAC 192k, blurred-background "fit" (or "crop"),
+      │        word-timed subtitles (ASS/libass)
+      └─ upload MP4 to private Supabase Storage bucket "video-clips"
+         at <user_id>/<video_id>/<clip_id>.mp4  → temporary signed links for preview/download
+```
+In `AI_PROVIDER=mock` mode, transcription and rendering are **real**; only clip choice and captions use simple
+rules and are labelled **Demo output**.
+
+### Video-to-Reels setup
+1. **Database:** Supabase → SQL Editor → run `supabase/migrations/002_video_to_reels.sql`.
+   It only creates `video_sources`, `video_clips` (owner-only RLS) and the private `video-clips` storage bucket
+   (50 MB/file, MP4 only, per-user folder policies). Nothing existing is changed.
+2. **FFmpeg** (free): `winget install Gyan.FFmpeg`, then open a **new** terminal so `ffmpeg` is on PATH
+   (or set `FFMPEG_PATH` / `FFPROBE_PATH` in backend/.env to the full .exe paths).
+3. **Python packages:** `pip install -r requirements.txt` (adds faster-whisper). The speech model
+   (~150 MB for `base`) downloads automatically the first time a video is transcribed.
+
+Optional settings in `backend/.env` (defaults shown):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WHISPER_MODEL` | `base` | `tiny` (fastest) · `base` · `small` · `medium` (most accurate, slower) |
+| `WHISPER_COMPUTE_TYPE` | `int8` | CPU-friendly precision |
+| `VIDEO_MAX_UPLOAD_MB` | `2048` | Upload size limit |
+| `VIDEO_MAX_URL_DOWNLOAD_MB` | `1024` | Link download size limit |
+| `VIDEO_MAX_DURATION_MINUTES` | `180` | Longest accepted recording |
+| `CLIP_MIN_SECONDS` / `CLIP_MAX_SECONDS` | `15` / `90` | Clip length limits |
+| `VIDEO_FRAME_MODE` | `fit` | `fit` = whole frame over blurred background, `crop` = fill by centre-crop |
+| `VIDEO_MEDIA_DIR` | `backend/media_storage` | Where source files are kept (git-ignored) |
+| `FFMPEG_PATH` / `FFPROBE_PATH` | found on PATH | Explicit tool locations |
+
+### Video API
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/videos/capabilities` | Is transcription / FFmpeg installed? Limits and formats |
+| GET | `/videos` | List video projects with clip counts |
+| POST | `/videos/upload` | multipart: `file`, `title`, `clip_count` (1-10), `kind` (`video`/`audio`) |
+| POST | `/videos/from-url` | `{"title","url","clip_count"}` (direct media links only) |
+| GET | `/videos/{id}` | Status, transcript, clips (+ signed preview/download links for rendered clips) |
+| POST | `/videos/{id}/retry` | Resume a failed job |
+| POST | `/videos/{id}/text-project` | Create a text project from the transcript |
+| PATCH | `/video-clips/{id}` | Edit clip text / timestamps |
+| POST | `/video-clips/{id}/render` | (Re-)render one clip |
+
+### Video-to-Reels limitations
+- Processing runs on the backend machine's CPU, one video at a time (max 2 queued per user). Roughly: transcription
+  ~5-10x faster than real time with `base`; rendering a few seconds per clip.
+- Jobs run inside the backend process. If the backend restarts mid-job, the video shows "interrupted" and **Retry** continues.
+- Background jobs act with the user's session token (about 1 hour). Very long jobs may need a Retry after signing in again.
+- Source files stay on the backend disk (needed for re-rendering) and are not deleted automatically.
+  For deployment you would move them to object storage and the jobs to a worker queue.
+- Rendered clips must be under 50 MB (Supabase free tier); the bitrate cap keeps 90-second clips well below that.
+- Subtitles use Arial; Devanagari text relies on Windows font fallback.

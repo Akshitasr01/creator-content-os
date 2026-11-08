@@ -9,7 +9,8 @@ import { Button } from "./ui";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/projects/new", label: "New project" },
+  { to: "/create", label: "New project" },
+  { to: "/videos", label: "Videos" },
   { to: "/settings", label: "Settings" },
 ];
 

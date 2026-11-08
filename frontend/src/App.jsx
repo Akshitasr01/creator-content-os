@@ -10,6 +10,11 @@ import LandingPage from "./pages/LandingPage";
 import NewProjectPage from "./pages/NewProjectPage";
 import ProjectPage from "./pages/ProjectPage";
 import SettingsPage from "./pages/SettingsPage";
+// AI Video-to-Reels
+import CreateSourcePage from "./pages/CreateSourcePage";
+import NewVideoPage from "./pages/NewVideoPage";
+import VideoProjectPage from "./pages/VideoProjectPage";
+import VideosPage from "./pages/VideosPage";
 
 /**
  * Public:     /  /login  /signup
@@ -33,6 +38,10 @@ export default function App() {
             <Route path="/projects/:projectId" element={<ProjectPage />} />
             <Route path="/projects/:projectId/studio" element={<ContentStudioPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/create" element={<CreateSourcePage />} />
+            <Route path="/videos" element={<VideosPage />} />
+            <Route path="/videos/new" element={<NewVideoPage />} />
+            <Route path="/videos/:videoId" element={<VideoProjectPage />} />
             {/* old URL from the previous version */}
             <Route path="/creator-voice" element={<Navigate to="/settings" replace />} />
           </Route>

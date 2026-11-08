@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api import content, creators, feedback, generate, health, projects
+from api import videos  # AI Video-to-Reels
 from core.config import get_settings
 from core.errors import AppError
 
@@ -59,5 +60,6 @@ def root():
 
 for router in (health.router, creators.router, projects.router, generate.router, content.router, feedback.router):
     app.include_router(router)
+app.include_router(videos.router)
 
 logger.info("AI provider: %s", settings.ai_provider)
