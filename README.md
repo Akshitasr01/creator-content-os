@@ -264,3 +264,85 @@ Optional settings in `backend/.env` (defaults shown):
   For deployment you would move them to object storage and the jobs to a worker queue.
 - Rendered clips must be under 50 MB (Supabase free tier); the bitrate cap keeps 90-second clips well below that.
 - Subtitles use Arial; Devanagari text relies on Windows font fallback.
+
+---
+
+## YouTube video links
+
+Paste a YouTube link (`youtube.com/watch?v=…`, `youtu.be/…`, `youtube.com/shorts/…`, `youtube.com/live/…`,
+`youtube.com/embed/…`). The backend extracts and validates the video ID, then shows the **official embedded
+player**, title, channel and thumbnail. **The video is never downloaded.**
+
+### What a YouTube link can and cannot do
+| You provide | You get |
+|---|---|
+| YouTube link + transcript (captions via Google sign-in, or pasted) | AI-selected clip moments: title, start/end, duration, hook, excerpt, caption, hashtags, CTA, reason. Each clip can be previewed in YouTube's player at its exact timestamps. **No MP4 files.** |
+| YouTube link + your **original video file** attached | Everything above **plus real 9:16 MP4 clips** with subtitles, previews and downloads (render all or only selected clips) |
+
+YouTube's terms don't allow apps to download videos, so downloadable MP4s always need the original file. Get it from
+**YouTube Studio → Content → hover the video → ⋮ Options → Download**. The app checks that the attached file's length
+matches the YouTube video (when duration is known) and that the transcript fits inside it, so clip times line up.
+
+### Transcript options for a YouTube project
+1. **Get captions from YouTube** (Sign in with Google): uses the official YouTube Data API `captions.list` +
+   `captions.download` with the creator's OAuth token (scope `youtube.force-ssl`). YouTube only allows this for
+   videos the signed-in account **owns or can edit**. The token is used once and never stored or logged.
+2. **Paste transcript**: on YouTube, "…more" → **Show transcript** → copy the timestamped lines. SRT/VTT files also
+   work. Text without timestamps is rejected, so clip times are never invented.
+3. **Upload the original video**: transcribed locally (free) and rendered.
+
+Not used, by design: `yt-dlp`, `youtube-transcript-api`, watch-page scraping or any unofficial endpoint.
+
+### YouTube setup (optional, free)
+Without any setup, YouTube links work with **oEmbed** previews (no duration shown) plus pasted transcripts and
+attached originals. Two optional additions, both from the same free Google Cloud project:
+
+**A. Data API key** (adds duration and better private/unavailable detection; free quota 10,000 units/day, 1 per lookup)
+1. Go to https://console.cloud.google.com → project picker → **New project** → create it.
+2. **APIs & Services → Library** → search **YouTube Data API v3** → **Enable**.
+3. **APIs & Services → Credentials → Create credentials → API key**. Click the key → **API restrictions →
+   Restrict key → YouTube Data API v3** → Save.
+4. Put it in `backend/.env`: `YOUTUBE_API_KEY=…` and restart the backend. (Never put it in the frontend.)
+
+**B. "Sign in with Google" for captions** (same project, API from step A enabled)
+1. **Google Auth Platform** (formerly "OAuth consent screen") → **Get started**: app name, support email,
+   Audience **External**, contact email → Create.
+2. **Audience → Test users → Add users**: add the Google account(s) that own the YouTube channels you'll test with
+   (Testing mode allows up to 100 test users).
+3. **Data access → Add or remove scopes** → add `https://www.googleapis.com/auth/youtube.force-ssl` → Save.
+4. **Clients → Create client → Web application**. Under **Authorized JavaScript origins** add
+   `http://localhost:5173` and `http://127.0.0.1:5173`. No redirect URI is needed.
+5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`) into `backend/.env`:
+   `GOOGLE_OAUTH_CLIENT_ID=…` and restart the backend. The **client secret is not used**; don't put it anywhere.
+6. While in Testing mode Google shows "Google hasn't verified this app" → **Continue**. A public launch requires
+   Google's app verification for this sensitive scope.
+
+### Database
+Run `supabase/migrations/003_youtube_sources.sql` in the Supabase SQL Editor (after 002). It adds YouTube columns
+to `video_sources` and widens two allowed-value lists (`source_kind` + `youtube`, `status` + `awaiting_transcript`).
+No data is changed or deleted; the existing owner-only RLS policies cover the new columns.
+
+### FFmpeg on Windows
+`winget install Gyan.FFmpeg`. The backend finds FFmpeg on PATH **or** in the usual install folders (winget, `C:\ffmpeg\bin`,
+Chocolatey, Scoop), and verifies it by actually running `ffmpeg -version` / `ffprobe -version`. If it's somewhere else, set
+`FFMPEG_PATH` and `FFPROBE_PATH` in `backend/.env` to the full `.exe` paths. `GET /videos/capabilities` and the New
+Video page show the exact reason when FFmpeg can't be used. YouTube transcript analysis works without FFmpeg; uploading,
+attaching originals and rendering need it.
+
+### YouTube API endpoints
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/youtube/validate` | `{"url"}` → video id, title, channel, thumbnail, duration (with key) |
+| POST | `/videos/from-youtube` | `{"url","title?","clip_count"}` → project in `awaiting_transcript` |
+| POST | `/videos/{id}/youtube-captions` | `{"access_token"}` (Google sign-in, own videos only) |
+| POST | `/videos/{id}/transcript` | `{"text"}` pasted timestamped transcript / SRT / VTT |
+| POST | `/videos/{id}/original-file` | multipart `file`: attach the original to render MP4s |
+| POST | `/videos/{id}/render` | `{"clip_ids":[…]}` render selected clips |
+
+### YouTube limitations
+- Caption download only works for videos the signed-in Google account owns/edits (YouTube rule), and only after you
+  complete the Google Cloud setup above. Other people's videos: paste the transcript.
+- Without `YOUTUBE_API_KEY`, the duration is unknown until a transcript or file is added, so an attached file that is
+  *longer* than the real video can't be detected (shorter ones are).
+- YouTube auto-captions have no word timings, so burned-in subtitles are timed per caption line (spread evenly), slightly
+  less precise than locally transcribed uploads.

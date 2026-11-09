@@ -6,10 +6,15 @@ import { useApiData } from "../hooks/useApiData";
 import { useToast } from "../hooks/useToast";
 import { formatBytes } from "../lib/videoFormat";
 import { videoApi } from "../services/videoApi";
+import YouTubeLinkForm from "../components/video/YouTubeLinkForm";
 
 const MODES = {
+  youtube: {
+    title: "YouTube video",
+    description: "Paste a YouTube link to preview it, then add its transcript to find the strongest clip moments.",
+  },
   link: {
-    title: "Video from a link",
+    title: "Direct video file URL",
     description: "Paste a direct link to a video file you own. We'll transcribe it and cut the strongest moments into vertical reels.",
   },
   upload: {
@@ -116,20 +121,34 @@ export default function NewVideoPage() {
     }
   }
 
+  const header = (
+    <PageHeader
+      eyebrow={<Link to="/create" className="text-sm font-medium text-slate-500 hover:text-slate-800">← Choose a different source</Link>}
+      title={MODES[mode].title}
+      description={MODES[mode].description}
+    />
+  );
+
+  // YouTube links need neither FFmpeg nor local transcription to get started.
+  if (mode === "youtube") {
+    return (
+      <div className="mx-auto max-w-4xl">
+        {header}
+        {caps.error && <Alert className="mb-6">{caps.error}</Alert>}
+        <YouTubeLinkForm capabilities={capabilities} />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader
-        eyebrow={<Link to="/create" className="text-sm font-medium text-slate-500 hover:text-slate-800">← Choose a different source</Link>}
-        title={MODES[mode].title}
-        description={MODES[mode].description}
-      />
+      {header}
 
       {caps.error && <Alert className="mb-6">{caps.error}</Alert>}
       {notReady && (
         <Alert tone="warning" title="Server setup incomplete" className="mb-6">
           {!capabilities.transcription && "Transcription (faster-whisper) is not installed. "}
-          {!capabilities.rendering && "FFmpeg is not installed, so media can't be processed. "}
-          See the README "Video-to-Reels setup" section.
+          {!capabilities.rendering && (capabilities.ffmpeg_message || "FFmpeg is not installed, so media can't be processed. ")}
         </Alert>
       )}
       {capabilities?.ai_provider === "mock" && (

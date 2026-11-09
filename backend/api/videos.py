@@ -11,11 +11,17 @@ from db.repository import Repository
 from db.video_repository import VideoRepository
 from schemas.video import (
     ClipUpdate,
+    ManualTranscript,
+    RenderRequest,
     VideoCapabilities,
     VideoClipOut,
     VideoFromUrl,
+    VideoFromYouTube,
     VideoSourceDetail,
     VideoSourceSummary,
+    YouTubeCaptionsRequest,
+    YouTubeValidate,
+    YouTubeVideoInfo,
 )
 from services.llm_service import LLMService
 from services.video import video_service
@@ -65,6 +71,69 @@ def upload(
         vrepo, repo, llm, settings, title=title, clip_count=clip_count, kind=kind,
         filename=file.filename or "", stream=file.file,
     )
+
+
+# ---------------------------------------------------------------------------
+# YouTube (official oEmbed / Data API / OAuth captions; the video is never downloaded)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/youtube/validate", response_model=YouTubeVideoInfo)
+def validate_youtube(data: YouTubeValidate, _: CurrentUser = Depends(get_current_user)):
+    """Check a YouTube link and return preview metadata. Nothing is saved."""
+    return video_service.validate_youtube(data.url)
+
+
+@router.post("/videos/from-youtube", response_model=VideoSourceSummary, status_code=status.HTTP_201_CREATED)
+def create_from_youtube(data: VideoFromYouTube, vrepo: VideoRepository = Depends(get_video_repository)):
+    """Create a YouTube project. It waits for a transcript (captions, paste or original file)."""
+    return video_service.create_from_youtube(vrepo, data)
+
+
+@router.post("/videos/{source_id}/transcript", response_model=VideoSourceSummary)
+def submit_transcript(
+    source_id: UUID,
+    data: ManualTranscript,
+    vrepo: VideoRepository = Depends(get_video_repository),
+    repo: Repository = Depends(get_repository),
+    llm: LLMService = Depends(get_llm),
+    settings: Settings = Depends(settings_dep),
+):
+    """Pasted timestamped transcript (YouTube 'Show transcript', SRT or VTT)."""
+    return video_service.submit_manual_transcript(vrepo, repo, llm, settings, str(source_id), data.text)
+
+
+@router.post("/videos/{source_id}/youtube-captions", response_model=VideoSourceSummary)
+def youtube_captions(
+    source_id: UUID,
+    data: YouTubeCaptionsRequest,
+    vrepo: VideoRepository = Depends(get_video_repository),
+    repo: Repository = Depends(get_repository),
+    llm: LLMService = Depends(get_llm),
+    settings: Settings = Depends(settings_dep),
+):
+    """Fetch captions with the creator's Google sign-in (own videos only). The token is not stored."""
+    return video_service.fetch_youtube_captions(vrepo, repo, llm, settings, str(source_id), data.access_token)
+
+
+@router.post("/videos/{source_id}/original-file", response_model=VideoSourceSummary)
+def attach_original(
+    source_id: UUID,
+    file: UploadFile = File(...),
+    vrepo: VideoRepository = Depends(get_video_repository),
+    repo: Repository = Depends(get_repository),
+    llm: LLMService = Depends(get_llm),
+    settings: Settings = Depends(settings_dep),
+):
+    """Attach the creator's own copy of the YouTube video so real MP4 clips can be rendered."""
+    return video_service.attach_original_file(vrepo, repo, llm, settings, str(source_id),
+                                              file.filename or "", file.file)
+
+
+@router.post("/videos/{source_id}/render", response_model=list[VideoClipOut], status_code=status.HTTP_202_ACCEPTED)
+def render_selected(source_id: UUID, data: RenderRequest, vrepo: VideoRepository = Depends(get_video_repository)):
+    """Render the selected clips (requires an uploaded/attached original file)."""
+    return video_service.render_selected(vrepo, str(source_id), data.clip_ids)
 
 
 @router.get("/videos/{source_id}", response_model=VideoSourceDetail)

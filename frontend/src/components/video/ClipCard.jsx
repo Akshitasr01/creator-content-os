@@ -6,6 +6,7 @@ import { videoApi } from "../../services/videoApi";
 import CopyButton from "../CopyButton";
 import { Badge, Button, Card, DemoBadge, Spinner, TextArea, TextInput } from "../ui";
 import VideoStatusBadge from "./VideoStatusBadge";
+import YouTubeEmbed from "./YouTubeEmbed";
 
 function hashtagLine(tags) {
   return (tags || []).map((tag) => `#${tag}`).join(" ");
@@ -116,9 +117,10 @@ function ClipEditor({ clip, onSaved, onCancel }) {
 }
 
 /** One AI-selected moment: real rendered video when available, otherwise clearly a suggestion. */
-export default function ClipCard({ clip, number, mediaType, canRender, onChange }) {
+export default function ClipCard({ clip, number, mediaType, canRender, onChange, youtubeVideoId, selected, onToggleSelect }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const [showYouTube, setShowYouTube] = useState(false);
   const [rendering, setRendering] = useState(false);
   // Keep the first signed link so polling doesn't restart a playing video.
   const [previewUrl] = useState(clip.preview_url);
@@ -144,6 +146,15 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange 
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            className="size-4 accent-brand-600"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select clip ${number}`}
+          />
+        )}
         <span className="text-xs font-semibold text-slate-400">#{number}</span>
         <h3 className="min-w-0 flex-1 truncate font-semibold text-slate-900" title={clip.title}>{clip.title}</h3>
         {clip.provider === "mock" && <DemoBadge />}
@@ -157,6 +168,11 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange 
             {formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {Math.round(clip.duration_seconds)}s
             {clip.file_size_bytes ? ` · ${formatBytes(clip.file_size_bytes)}` : ""}
           </p>
+          {youtubeVideoId && clip.render_status !== "rendered" && (
+            <Button variant="ghost" size="sm" className="mt-1 w-full" aria-expanded={showYouTube} onClick={() => setShowYouTube((v) => !v)}>
+              {showYouTube ? "Hide YouTube preview" : "▶ Watch this moment on YouTube"}
+            </Button>
+          )}
         </div>
 
         <div className="min-w-0">
@@ -195,6 +211,13 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange 
           )}
         </div>
       </div>
+
+      {showYouTube && youtubeVideoId && (
+        <div className="border-t border-slate-100 px-5 py-4">
+          <YouTubeEmbed videoId={youtubeVideoId} title={clip.title} start={clip.start_seconds} end={clip.end_seconds} />
+          <p className="mt-2 text-xs text-slate-500">Streaming from YouTube. This is a preview, not a downloadable file.</p>
+        </div>
+      )}
 
       {!editing && (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3">

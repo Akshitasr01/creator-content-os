@@ -40,17 +40,11 @@ async function request(path, { method = "GET", body } = {}) {
 }
 
 /** Multipart upload with progress (fetch can't report upload progress). */
-async function upload({ file, title, clipCount, kind }, onProgress) {
+async function uploadForm(path, form, onProgress) {
   const headers = await authHeader();
-  const form = new FormData();
-  form.append("file", file);
-  form.append("title", title);
-  form.append("clip_count", String(clipCount));
-  form.append("kind", kind);
-
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE_URL}/videos/upload`);
+    xhr.open("POST", `${API_BASE_URL}${path}`);
     Object.entries(headers).forEach(([key, value]) => xhr.setRequestHeader(key, value));
     xhr.upload.onprogress = (event) => event.lengthComputable && onProgress?.(event.loaded / event.total);
     xhr.onerror = () =>
@@ -69,6 +63,21 @@ async function upload({ file, title, clipCount, kind }, onProgress) {
   });
 }
 
+function upload({ file, title, clipCount, kind }, onProgress) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("title", title);
+  form.append("clip_count", String(clipCount));
+  form.append("kind", kind);
+  return uploadForm("/videos/upload", form, onProgress);
+}
+
+function attachOriginal(id, file, onProgress) {
+  const form = new FormData();
+  form.append("file", file);
+  return uploadForm(`/videos/${id}/original-file`, form, onProgress);
+}
+
 export const videoApi = {
   capabilities: () => request("/videos/capabilities"),
   list: () => request("/videos"),
@@ -80,6 +89,16 @@ export const videoApi = {
   createTextProject: (id) => request(`/videos/${id}/text-project`, { method: "POST" }),
   updateClip: (id, changes) => request(`/video-clips/${id}`, { method: "PATCH", body: changes }),
   renderClip: (id) => request(`/video-clips/${id}/render`, { method: "POST" }),
+
+  // YouTube (the video itself is never downloaded)
+  validateYouTube: (url) => request("/youtube/validate", { method: "POST", body: { url } }),
+  fromYouTube: ({ url, title, clipCount }) =>
+    request("/videos/from-youtube", { method: "POST", body: { url, title, clip_count: clipCount } }),
+  submitTranscript: (id, text) => request(`/videos/${id}/transcript`, { method: "POST", body: { text } }),
+  youtubeCaptions: (id, accessToken) =>
+    request(`/videos/${id}/youtube-captions`, { method: "POST", body: { access_token: accessToken } }),
+  attachOriginal,
+  renderClips: (id, clipIds) => request(`/videos/${id}/render`, { method: "POST", body: { clip_ids: clipIds } }),
 };
 
 export const IN_PROGRESS_STATUSES = new Set(["queued", "downloading", "transcribing", "selecting", "rendering"]);

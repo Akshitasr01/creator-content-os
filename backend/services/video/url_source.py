@@ -28,7 +28,7 @@ PLATFORM_HOSTS = {
 }
 
 PLATFORM_HELP = {
-    "YouTube": "Download your own video from YouTube Studio (Content → ⋮ → Download), then use Upload Video.",
+    "YouTube": "Use the 'YouTube video link' option instead: it previews the video and works from its transcript.",
     "Google Drive": "Download the file from Drive, then use Upload Video.",
     "Dropbox": "Download the file from Dropbox, then use Upload Video.",
 }
@@ -65,6 +65,8 @@ def validate_media_url(url: str, resolve_host: bool = True) -> str:
     platform = _platform_for(parsed.hostname)
     if platform:
         help_text = PLATFORM_HELP.get(platform, f"Download your own video from {platform}, then use Upload Video.")
+        if platform == "YouTube":
+            raise ValidationFailed(f"This is a YouTube page, not a video file. {help_text}")
         raise ValidationFailed(
             f"{platform} links can't be processed: {platform} does not permit downloading by third-party "
             f"tools. {help_text}"

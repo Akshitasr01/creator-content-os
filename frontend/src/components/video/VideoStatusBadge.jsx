@@ -1,6 +1,7 @@
 import { Badge, Spinner } from "../ui";
 
 const STATUS = {
+  awaiting_transcript: { tone: "amber", label: "Needs transcript" },
   queued: { tone: "slate", label: "Queued", busy: true },
   downloading: { tone: "blue", label: "Downloading", busy: true },
   transcribing: { tone: "blue", label: "Transcribing", busy: true },

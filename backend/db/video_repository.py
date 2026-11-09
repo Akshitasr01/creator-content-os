@@ -15,7 +15,7 @@ from db.supabase_client import SupabaseRest, _require_config
 
 SOURCE_LIST_COLUMNS = (
     "id,title,source_kind,media_type,status,progress,status_message,error_message,"
-    "requested_clips,duration_seconds,created_at,updated_at"
+    "requested_clips,duration_seconds,youtube_video_id,thumbnail_url,created_at,updated_at"
 )
 
 

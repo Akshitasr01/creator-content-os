@@ -41,6 +41,29 @@ class VideoFromUrl(BaseModel):
         return value.strip()
 
 
+class YouTubeValidate(BaseModel):
+    url: str = Field(min_length=5, max_length=2000)
+
+
+class VideoFromYouTube(BaseModel):
+    url: str = Field(min_length=5, max_length=2000)
+    title: str | None = Field(default=None, max_length=200)
+    clip_count: int = Field(ge=1, le=10)
+
+
+class ManualTranscript(BaseModel):
+    text: str = Field(min_length=10, max_length=500_000)
+
+
+class YouTubeCaptionsRequest(BaseModel):
+    # Short-lived Google OAuth access token from the browser; used once, never stored.
+    access_token: str = Field(min_length=10, max_length=4096)
+
+
+class RenderRequest(BaseModel):
+    clip_ids: list[str] = Field(min_length=1, max_length=10)
+
+
 class ClipUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     hook: str | None = Field(default=None, max_length=500)
@@ -92,11 +115,16 @@ class VideoSourceSummary(BaseModel):
     duration_seconds: float | None = None
     clip_count: int = 0
     rendered_count: int = 0
+    youtube_video_id: str | None = None
+    thumbnail_url: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
 
 class VideoSourceDetail(VideoSourceSummary):
+    youtube_url: str | None = None
+    channel_title: str | None = None
+    transcript_source: str | None = None
     source_url: str | None = None
     original_filename: str | None = None
     language: str | None = None
@@ -116,3 +144,18 @@ class VideoCapabilities(BaseModel):
     max_duration_minutes: int
     video_extensions: list[str]
     audio_extensions: list[str]
+    ffmpeg_message: str | None = None
+    youtube_metadata: str = "oembed"          # "oembed" or "data_api" (key configured)
+    google_oauth_client_id: str | None = None  # public value; enables "Get captions from YouTube"
+
+
+class YouTubeVideoInfo(BaseModel):
+    video_id: str
+    url: str
+    title: str
+    channel_title: str | None = None
+    thumbnail_url: str | None = None
+    duration_seconds: float | None = None
+    embeddable: bool = True
+    has_captions: bool | None = None
+    metadata_source: str

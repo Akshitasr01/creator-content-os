@@ -2,12 +2,16 @@ import { Alert, Button, Card } from "../ui";
 
 const ORDER = ["queued", "downloading", "transcribing", "selecting", "rendering", "completed"];
 
+const TRANSCRIPT_LABELS = { youtube_captions: "Transcript (YouTube captions)", manual: "Transcript (pasted)" };
+
 function stepsFor(video) {
   const steps = [];
   if (video.source_kind === "url") steps.push({ key: "downloading", label: "Download" });
-  steps.push({ key: "transcribing", label: "Transcribe" });
+  steps.push({ key: "transcribing", label: TRANSCRIPT_LABELS[video.transcript_source] || "Transcribe" });
   steps.push({ key: "selecting", label: "Find moments" });
-  if (video.media_type === "video") steps.push({ key: "rendering", label: "Render clips" });
+  // A YouTube link without the original file can't be rendered.
+  const renderable = video.source_kind !== "youtube" || video.source_file_available;
+  if (video.media_type === "video" && renderable) steps.push({ key: "rendering", label: "Render clips" });
   return steps;
 }
 
@@ -27,7 +31,7 @@ export default function ProcessingStatus({ video, onRetry, retrying }) {
       </Alert>
     );
   }
-  if (video.status === "completed") return null;
+  if (video.status === "completed" || video.status === "awaiting_transcript") return null;
 
   const current = ORDER.indexOf(video.status);
   return (

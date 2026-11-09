@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Alert, Button, Card, CardHeader, EmptyState, PageHeader, PageSpinner } from "../components/ui";
 import ClipCard from "../components/video/ClipCard";
 import ProcessingStatus from "../components/video/ProcessingStatus";
 import VideoStatusBadge from "../components/video/VideoStatusBadge";
+import { OriginalFileUpload, TranscriptOptions } from "../components/video/YouTubePanels";
+import YouTubeEmbed from "../components/video/YouTubeEmbed";
+import { useApiData } from "../hooks/useApiData";
 import { useToast } from "../hooks/useToast";
 import { formatTime, SOURCE_KIND_LABELS } from "../lib/videoFormat";
 import { IN_PROGRESS_STATUSES, videoApi } from "../services/videoApi";
@@ -71,6 +74,9 @@ function VideoWorkspace({ videoId }) {
   const { data: video, error, loading, refresh, setData } = usePolledVideo(videoId);
   const [retrying, setRetrying] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
+  const [renderingSelected, setRenderingSelected] = useState(false);
+  const capabilities = useApiData(useCallback(() => videoApi.capabilities(), [])).data;
 
   if (loading) return <PageSpinner label="Loading video project…" />;
   if (!video) {
@@ -113,8 +119,34 @@ function VideoWorkspace({ videoId }) {
     if (updated.render_status === "queued") refresh();
   }
 
+  function toggleSelect(clipId) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(clipId)) next.delete(clipId);
+      else next.add(clipId);
+      return next;
+    });
+  }
+
+  async function handleRenderSelected() {
+    setRenderingSelected(true);
+    try {
+      await videoApi.renderClips(videoId, [...selected]);
+      toast.info(`Rendering ${selected.size} clip${selected.size === 1 ? "" : "s"}…`);
+      setSelected(new Set());
+      refresh();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRenderingSelected(false);
+    }
+  }
+
   const canRender = video.media_type === "video" && video.source_file_available && !IN_PROGRESS_STATUSES.has(video.status);
   const hasTranscript = video.transcript?.length > 0;
+  const isYouTube = video.source_kind === "youtube";
+  const needsOriginal = isYouTube && !video.source_file_available && video.status === "completed" && video.clips.length > 0;
+  const kindLabel = isYouTube ? `YouTube${video.channel_title ? ` · ${video.channel_title}` : ""}` : SOURCE_KIND_LABELS[video.source_kind];
 
   return (
     <>
@@ -123,7 +155,7 @@ function VideoWorkspace({ videoId }) {
         title={video.title}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            {SOURCE_KIND_LABELS[video.source_kind]}
+            {kindLabel}
             {video.duration_seconds ? ` · ${formatTime(video.duration_seconds)}` : ""}
             {video.clip_count > 0 && ` · ${video.clip_count} clips`}
             <VideoStatusBadge status={video.status} />
@@ -140,21 +172,74 @@ function VideoWorkspace({ videoId }) {
 
       <div className="space-y-6">
         {error && <Alert tone="warning">Couldn't refresh: {error}</Alert>}
+        {isYouTube && video.youtube_video_id && (
+          <Card className="overflow-hidden">
+            <div className="grid gap-5 p-5 md:grid-cols-[1.4fr_1fr] md:items-start">
+              <YouTubeEmbed videoId={video.youtube_video_id} title={video.title} />
+              <div className="space-y-2 text-sm text-slate-600">
+                <p className="font-medium text-slate-900">Source: YouTube video</p>
+                <p>
+                  <a href={video.youtube_url} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:text-brand-700">
+                    Open on YouTube ↗
+                  </a>
+                </p>
+                <ul className="space-y-1">
+                  <li>{hasTranscript ? "✓" : "○"} Transcript {video.transcript_source === "youtube_captions" ? "(YouTube captions)" : video.transcript_source === "manual" ? "(pasted)" : video.transcript_source === "whisper" ? "(transcribed from original)" : "needed"}</li>
+                  <li>{video.clips.length ? "✓" : "○"} Clip moments {video.clips.length ? `(${video.clips.length})` : ""}</li>
+                  <li>{video.source_file_available ? "✓ Original video attached" : "○ Original video (needed for MP4 downloads)"}</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {video.status === "awaiting_transcript" && (
+          <TranscriptOptions video={video} capabilities={capabilities} onUpdated={refresh} />
+        )}
+
         <ProcessingStatus video={video} onRetry={handleRetry} retrying={retrying} />
 
         {video.status === "completed" && video.status_message && (
           <Alert tone={video.rendered_count > 0 || video.media_type === "audio" ? "success" : "info"}>
             {video.status_message}.
             {video.media_type === "audio" && " Audio sources produce timestamp suggestions only."}
-            {video.media_type === "video" && !video.source_file_available && " The source file is no longer on the server, so clips can't be re-rendered."}
+            {video.media_type === "video" && !video.source_file_available && !isYouTube && " The source file is no longer on the server, so clips can't be re-rendered."}
           </Alert>
+        )}
+
+        {needsOriginal && (
+          <Card>
+            <CardHeader
+              title="Get downloadable MP4s"
+              description="These clips are timestamp suggestions. YouTube links can't be cut into files, so attach your original video to render them."
+            />
+            <div className="p-5">
+              <OriginalFileUpload video={video} capabilities={capabilities} onUpdated={refresh} />
+            </div>
+          </Card>
         )}
 
         {hasTranscript && <TranscriptPanel segments={video.transcript} />}
 
         {video.clips.length > 0 ? (
           <section aria-labelledby="clips-heading">
-            <h2 id="clips-heading" className="mb-4 text-lg font-semibold text-slate-900">Clips</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 id="clips-heading" className="text-lg font-semibold text-slate-900">Clips</h2>
+              {canRender && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelected(selected.size === video.clips.length ? new Set() : new Set(video.clips.map((c) => c.id)))}
+                  >
+                    {selected.size === video.clips.length ? "Clear selection" : "Select all"}
+                  </Button>
+                  <Button size="sm" onClick={handleRenderSelected} loading={renderingSelected} disabled={selected.size === 0}>
+                    Render selected ({selected.size})
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="grid gap-6 xl:grid-cols-2">
               {video.clips.map((clip, index) => (
                 <ClipCard
@@ -165,6 +250,9 @@ function VideoWorkspace({ videoId }) {
                   mediaType={video.media_type}
                   canRender={canRender}
                   onChange={replaceClip}
+                  youtubeVideoId={isYouTube ? video.youtube_video_id : undefined}
+                  selected={selected.has(clip.id)}
+                  onToggleSelect={canRender ? () => toggleSelect(clip.id) : undefined}
                 />
               ))}
             </div>

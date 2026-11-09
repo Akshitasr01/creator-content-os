@@ -4,9 +4,16 @@ import { PageHeader } from "../components/ui";
 
 const SOURCES = [
   {
+    to: "/videos/new?source=youtube",
+    icon: "▶",
+    title: "YouTube video link",
+    description: "Paste a YouTube link. Preview it, add its transcript, and get the best clip moments. Attach your original file for MP4s.",
+    badge: "Clips",
+  },
+  {
     to: "/videos/new?source=link",
     icon: "🔗",
-    title: "Video link",
+    title: "Direct video file URL",
     description: "A direct link to a video file you own (.mp4, .mov, .webm). Get up to 10 vertical clips.",
     badge: "Clips",
   },

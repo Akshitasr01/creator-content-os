@@ -25,7 +25,9 @@ from services.video import clip_selector, media_tools, renderer, transcriber, ur
 
 logger = logging.getLogger(__name__)
 
+# 'awaiting_transcript' is NOT in progress: it waits for the creator to act.
 IN_PROGRESS = {"queued", "downloading", "transcribing", "selecting", "rendering"}
+NEEDS_ORIGINAL = "Timestamp suggestion: attach the original video file to render a downloadable MP4."
 INTERRUPTED = "Processing was interrupted (the server restarted). Click Retry to continue."
 
 
@@ -126,71 +128,89 @@ def _run_pipeline(ctx: JobContext) -> None:
     if source is None:
         return
 
-    # 1. Download (links only; uploads are already on disk)
     path = find_source_file(user_id, source_id)
-    if path is None:
-        if not source.get("source_url"):
-            raise ValidationFailed("The uploaded file is no longer on the server. Please upload it again.")
-        repo.update_source(source_id, {"status": "downloading", "progress": 2, "error_message": None,
-                                       "status_message": "Downloading your file…"})
-        extension = PurePosixPath(urlparse(source["source_url"]).path).suffix.lower()
-        folder = source_dir(user_id, source_id)
-        folder.mkdir(parents=True, exist_ok=True)
-        partial = folder / f"download{extension}.part"
-        try:
-            url_source.download_media(source["source_url"], partial, settings.max_url_download_mb * 1024 * 1024,
-                                      _progress_updater(repo, source_id, 2, 10))
-            path = partial.rename(folder / f"source{extension}")
-        finally:
-            partial.unlink(missing_ok=True)
-
-    # 2. Probe
-    info = media_tools.probe(path)
-    if info.duration_seconds > settings.max_duration_minutes * 60:
-        raise ValidationFailed(f"This file is longer than the {settings.max_duration_minutes}-minute limit.")
-    if not info.has_audio:
-        raise ValidationFailed("This file has no audio track, so there is no speech to turn into clips.")
-    media_type = "video" if info.has_video else "audio"
-    repo.update_source(source_id, {"duration_seconds": round(info.duration_seconds, 2), "media_type": media_type})
-
-    # 3. Transcribe (skipped on retry if already done)
     segments = source.get("transcript")
-    if not segments:
-        repo.update_source(source_id, {"status": "transcribing", "progress": 10, "error_message": None,
-                                       "status_message": "Transcribing speech with timestamps…"})
-        transcript = transcriber.transcribe(path, _progress_updater(repo, source_id, 10, 60))
-        segments = transcript.segments
-        repo.update_source(source_id, {"transcript": segments, "transcript_text": transcript.text,
-                                       "language": transcript.language, "progress": 60})
+    is_youtube = source["source_kind"] == "youtube"
+
+    if is_youtube and path is None:
+        # YouTube link only: work from the captions / pasted transcript. Nothing is downloaded.
+        if not segments:
+            raise ValidationFailed("Add a transcript first: get captions from YouTube, paste the transcript, "
+                                   "or upload the original video file.")
+        duration = float(source.get("duration_seconds") or segments[-1]["end"])
+        media_type = "video"
+    else:
+        # 1. Download (direct links only; uploads and attached originals are already on disk)
+        if path is None:
+            if not source.get("source_url"):
+                raise ValidationFailed("The uploaded file is no longer on the server. Please upload it again.")
+            repo.update_source(source_id, {"status": "downloading", "progress": 2, "error_message": None,
+                                           "status_message": "Downloading your file…"})
+            extension = PurePosixPath(urlparse(source["source_url"]).path).suffix.lower()
+            folder = source_dir(user_id, source_id)
+            folder.mkdir(parents=True, exist_ok=True)
+            partial = folder / f"download{extension}.part"
+            try:
+                url_source.download_media(source["source_url"], partial, settings.max_url_download_mb * 1024 * 1024,
+                                          _progress_updater(repo, source_id, 2, 10))
+                path = partial.rename(folder / f"source{extension}")
+            finally:
+                partial.unlink(missing_ok=True)
+
+        # 2. Probe
+        media_tools.require_ffmpeg()
+        info = media_tools.probe(path)
+        if info.duration_seconds > settings.max_duration_minutes * 60:
+            raise ValidationFailed(f"This file is longer than the {settings.max_duration_minutes}-minute limit.")
+        if not info.has_audio:
+            raise ValidationFailed("This file has no audio track, so there is no speech to turn into clips.")
+        duration = info.duration_seconds
+        media_type = "video" if info.has_video else "audio"
+        repo.update_source(source_id, {"duration_seconds": round(duration, 2), "media_type": media_type})
+
+        # 3. Transcribe (skipped on retry, or when YouTube captions / a pasted transcript exist)
+        if not segments:
+            repo.update_source(source_id, {"status": "transcribing", "progress": 10, "error_message": None,
+                                           "status_message": "Transcribing speech with timestamps…"})
+            transcript = transcriber.transcribe(path, _progress_updater(repo, source_id, 10, 60))
+            segments = transcript.segments
+            repo.update_source(source_id, {"transcript": segments, "transcript_text": transcript.text,
+                                           "language": transcript.language, "transcript_source": "whisper",
+                                           "progress": 60})
 
     # 4. Select clips (skipped on retry if clips already exist)
     clips = repo.list_clips(source_id)
     if not clips:
         repo.update_source(source_id, {"status": "selecting", "progress": 62, "error_message": None,
                                        "status_message": "Finding the strongest moments…"})
-        min_s = min(settings.clip_min_seconds, info.duration_seconds)
+        min_s = min(settings.clip_min_seconds, duration)
         max_s = settings.clip_max_seconds
         result = clip_selector.select_clips(ctx.llm, source["title"], segments, ctx.profile,
                                             source["requested_clips"], min_s, max_s)
-        chosen = clip_selector.finalize_clips(result.data.clips, segments, info.duration_seconds,
+        chosen = clip_selector.finalize_clips(result.data.clips, segments, duration,
                                               source["requested_clips"], min_s, max_s)
         if not chosen:
             raise ValidationFailed("No self-contained moments were found in this recording.")
-        renderable = media_type == "video" and media_tools.ffmpeg_available()
+        renderable = media_type == "video" and path is not None and media_tools.ffmpeg_available()
+        if renderable:
+            render_status, render_error = "queued", None
+        elif media_type == "audio":
+            render_status, render_error = "unavailable", "Audio-only source: timestamp suggestions only."
+        elif path is None:  # YouTube link without the original file
+            render_status, render_error = "not_rendered", NEEDS_ORIGINAL
+        else:
+            render_status, render_error = "not_rendered", media_tools.ffmpeg_status()["message"]
         for index, clip in enumerate(chosen):
             clips.append(repo.insert_clip({
                 **clip, "video_source_id": source_id, "clip_index": index,
-                "render_status": "queued" if renderable else "unavailable",
-                "render_error": None if renderable else (
-                    "Audio-only source: timestamp suggestions only." if media_type == "audio"
-                    else "FFmpeg is not installed on the server."),
+                "render_status": render_status, "render_error": render_error,
                 "provider": result.provider, "model": result.model,
             }))
         repo.update_source(source_id, {"provider": result.provider, "model": result.model})
 
     # 5. Render (only clips that still need it)
     to_render = [c for c in clips if c["render_status"] in ("queued", "rendering", "failed")]
-    if to_render:
+    if to_render and path is not None:
         repo.update_source(source_id, {"status": "rendering", "progress": 70, "error_message": None,
                                        "status_message": f"Rendering {len(to_render)} vertical clips…"})
         for done, clip in enumerate(to_render):
@@ -201,7 +221,9 @@ def _run_pipeline(ctx: JobContext) -> None:
     rendered = sum(c["render_status"] == "rendered" for c in final)
     failed = sum(c["render_status"] == "failed" for c in final)
     message = f"{len(final)} clips found"
-    if media_type == "video":
+    if media_type == "video" and path is None:
+        message += " (timestamp suggestions; attach the original video file to render MP4s)"
+    elif media_type == "video":
         message += f", {rendered} rendered" + (f", {failed} failed to render" if failed else "")
     repo.update_source(source_id, {"status": "completed", "progress": 100, "status_message": message,
                                    "error_message": None})

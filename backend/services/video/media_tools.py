@@ -24,9 +24,54 @@ class MediaInfo:
     height: int | None = None
 
 
-def ffmpeg_available() -> bool:
+FFMPEG_HELP = (
+    "Install it with `winget install Gyan.FFmpeg`, then open a NEW terminal and restart the backend "
+    "(or set FFMPEG_PATH and FFPROBE_PATH in backend/.env). See README → Video-to-Reels setup."
+)
+
+_verified: dict[str, str] = {}  # path -> version line, only for tools that actually ran
+
+
+def _verify(path: str | None) -> str | None:
+    """Run `<tool> -version` once; return its version line, or None if it can't execute."""
+    if not path:
+        return None
+    if path in _verified:
+        return _verified[path]
+    try:
+        result = subprocess.run([path, "-hide_banner", "-version"], capture_output=True, text=True,
+                                timeout=15, creationflags=_NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0 or not result.stdout:
+        return None
+    _verified[path] = result.stdout.splitlines()[0]
+    return _verified[path]
+
+
+def ffmpeg_status() -> dict:
+    """Is FFmpeg usable? Includes a human-readable reason when it isn't."""
     settings = get_video_settings()
-    return bool(settings.ffmpeg_path and settings.ffprobe_path)
+    ffmpeg_ok = _verify(settings.ffmpeg_path)
+    ffprobe_ok = _verify(settings.ffprobe_path)
+    if ffmpeg_ok and ffprobe_ok:
+        return {"available": True, "version": ffmpeg_ok, "message": None}
+    if not settings.ffmpeg_path or not settings.ffprobe_path:
+        missing = " and ".join(n for n, p in (("ffmpeg", settings.ffmpeg_path), ("ffprobe", settings.ffprobe_path)) if not p)
+        message = f"FFmpeg is not installed or not found ({missing} missing). {FFMPEG_HELP}"
+    else:
+        message = f"FFmpeg was found but could not run. Reinstall it. {FFMPEG_HELP}"
+    return {"available": False, "version": None, "message": message}
+
+
+def ffmpeg_available() -> bool:
+    return ffmpeg_status()["available"]
+
+
+def require_ffmpeg() -> None:
+    status = ffmpeg_status()
+    if not status["available"]:
+        raise ConfigurationError(status["message"])
 
 
 def run_tool(args: list[str], timeout: int, cwd: Path | None = None) -> subprocess.CompletedProcess:

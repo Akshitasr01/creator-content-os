@@ -21,9 +21,13 @@ from tests.video_fakes import (
 # ---------------------------------------------------------------------------
 
 
+def test_youtube_links_in_direct_url_field_point_to_youtube_option():
+    for url in ("https://www.youtube.com/watch?v=abc", "https://youtu.be/abc"):
+        with pytest.raises(ValidationFailed, match="YouTube video link"):
+            url_source.validate_media_url(url, resolve_host=False)
+
+
 @pytest.mark.parametrize("url, platform", [
-    ("https://www.youtube.com/watch?v=abc", "YouTube"),
-    ("https://youtu.be/abc", "YouTube"),
     ("https://www.instagram.com/reel/xyz/", "Instagram"),
     ("https://vm.tiktok.com/abc", "TikTok"),
     ("https://vimeo.com/123.mp4", "Vimeo"),
@@ -171,7 +175,7 @@ def test_bad_uploads_create_nothing(client, video_env):
 
 def test_platform_url_rejected_by_api(client, video_env):
     response = client.post("/videos/from-url", json={"title": "x", "url": "https://youtube.com/watch?v=1", "clip_count": 3})
-    assert response.status_code == 422 and "YouTube" in response.json()["detail"]
+    assert response.status_code == 422 and "YouTube video link" in response.json()["detail"]
 
 
 def test_editing_timestamps_invalidates_render_then_rerender(client, video_env):

@@ -18,11 +18,33 @@ def _int(name: str, default: int) -> int:
     return int(value) if value not in (None, "") else default
 
 
+def _windows_candidates(executable: str) -> list[Path]:
+    """Usual Windows install locations, for terminals opened before PATH was updated."""
+    name = f"{executable}.exe"
+    local = Path(os.getenv("LOCALAPPDATA", ""))
+    candidates = [local / "Microsoft" / "WinGet" / "Links" / name]
+    packages = local / "Microsoft" / "WinGet" / "Packages"
+    if packages.exists():
+        candidates += sorted(packages.glob(f"*FFmpeg*/*/bin/{name}"), reverse=True)
+    for root in (Path("C:/ffmpeg"), Path(os.getenv("ProgramFiles", "C:/Program Files")) / "ffmpeg",
+                 Path("C:/ProgramData/chocolatey/bin"), Path.home() / "scoop" / "shims"):
+        candidates += [root / "bin" / name, root / name]
+    return candidates
+
+
 def _find_tool(env_name: str, executable: str) -> str | None:
-    configured = os.getenv(env_name, "").strip()
+    """FFMPEG_PATH/FFPROBE_PATH, then PATH, then common Windows install folders."""
+    configured = os.getenv(env_name, "").strip().strip('"')
     if configured:
-        return configured if Path(configured).exists() else None
-    return shutil.which(executable)
+        return configured if Path(configured).is_file() else None
+    found = shutil.which(executable)
+    if found:
+        return found
+    if os.name == "nt":
+        for candidate in _windows_candidates(executable):
+            if candidate.is_file():
+                return str(candidate)
+    return None
 
 
 @dataclass(frozen=True)
@@ -52,6 +74,12 @@ class VideoSettings:
     render_height: int = 1280
     frame_mode: str = field(default_factory=lambda: os.getenv("VIDEO_FRAME_MODE", "fit"))
     storage_bucket: str = field(default_factory=lambda: os.getenv("VIDEO_STORAGE_BUCKET", "video-clips"))
+
+    # --- YouTube (both optional, both free) ---
+    # Data API v3 key: adds duration + reliable private/unavailable detection to the preview.
+    youtube_api_key: str = field(default_factory=lambda: os.getenv("YOUTUBE_API_KEY", "").strip())
+    # OAuth Client ID (public value) for "Sign in with Google" caption access.
+    google_oauth_client_id: str = field(default_factory=lambda: os.getenv("GOOGLE_OAUTH_CLIENT_ID", "").strip())
 
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
