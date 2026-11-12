@@ -1,0 +1,86 @@
+# Render Blueprint for Creator Content OS (free plans only).
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Values marked `sync: false` are NOT stored in this file. Render asks for them
+# when the Blueprint is first applied; enter them in the Render dashboard.
+# Never put secret values in this file.
+
+services:
+  # ---------------------------------------------------------------- backend
+  - type: web
+    name: creator-content-os-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # One worker on purpose: the video job queue lives in this process.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      # --- Supabase (Project Settings → API). Publishable key only, never service-role.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # --- AI. Start with "mock" (free); switch to "openai" after setting a spending limit.
+      - key: AI_PROVIDER
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      # --- Exact frontend origin(s), comma-separated, no trailing slash.
+      - key: CORS_ORIGINS
+        sync: false
+      # --- YouTube (optional)
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      # --- Limits sized for the free instance (512 MB RAM, 0.1 CPU, temporary disk)
+      - key: DAILY_AI_CALL_LIMIT
+        value: "30"
+      - key: WHISPER_MODEL
+        value: tiny
+      - key: VIDEO_MAX_DURATION_MINUTES
+        value: "10"
+      - key: VIDEO_MAX_UPLOAD_MB
+        value: "200"
+      - key: VIDEO_MAX_URL_DOWNLOAD_MB
+        value: "200"
+
+  # --------------------------------------------------------------- frontend
+  - type: web
+    name: creator-content-os-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    # Single-page app: every unknown path serves index.html so refreshing
+    # /dashboard or /projects/123 doesn't 404. Real files are served first.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # All three are PUBLIC values bundled into the browser - no secrets here.
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false

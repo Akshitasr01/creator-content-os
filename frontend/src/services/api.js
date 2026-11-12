@@ -5,11 +5,8 @@
  * who is calling. The browser never talks to OpenAI and never writes app data
  * to Supabase directly - Supabase is used from the browser for auth only.
  */
+import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabaseClient";
-
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(message, status, code) {

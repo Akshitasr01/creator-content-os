@@ -3,10 +3,9 @@
  * every request carries the Supabase access token; the browser never talks to
  * the AI provider or writes video data to Supabase directly.
  */
+import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabaseClient";
 import { ApiError } from "./api";
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 async function authHeader() {
   const {
