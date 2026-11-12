@@ -101,27 +101,27 @@ export default function ContentBrief({ analysis, onSave, onReanalyze, reanalyzin
         <div className="space-y-6 p-5">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Main topic</dt>
-              <dd className="mt-1 font-medium text-slate-900">{analysis.main_topic}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">Main topic</dt>
+              <dd className="mt-1 font-medium text-ink">{analysis.main_topic}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Audience</dt>
-              <dd className="mt-1 text-slate-900">{analysis.target_audience}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">Audience</dt>
+              <dd className="mt-1 text-ink">{analysis.target_audience}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Summary</dt>
-              <dd className="mt-1 text-slate-700">{analysis.summary}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">Summary</dt>
+              <dd className="mt-1 text-graphite">{analysis.summary}</dd>
             </div>
           </dl>
           <div className="grid gap-6 md:grid-cols-2">
             {LIST_FIELDS.map(({ key, label }) =>
               analysis[key]?.length ? (
                 <div key={key}>
-                  <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</h3>
-                  <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-muted">{label}</h3>
+                  <ul className="mt-2 space-y-1.5 text-sm text-graphite">
                     {analysis[key].map((item, index) => (
                       <li key={index} className="flex gap-2">
-                        <span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+                        <span className="mt-2 size-1.5 shrink-0 rounded-full bg-muted" aria-hidden="true" />
                         <span>{item}</span>
                       </li>
                     ))}

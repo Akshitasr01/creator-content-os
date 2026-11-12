@@ -4,7 +4,7 @@ import { useToast } from "../../hooks/useToast";
 import { requestYouTubeAccessToken } from "../../lib/googleAuth";
 import { formatBytes } from "../../lib/videoFormat";
 import { videoApi } from "../../services/videoApi";
-import { Alert, Button, Card, CardHeader, TextArea } from "../ui";
+import { Alert, Button, Card, CardHeader, Tabs, TextArea } from "../ui";
 
 /** Upload the creator's own copy of the YouTube video (needed for real MP4 clips). */
 export function OriginalFileUpload({ video, capabilities, onUpdated, compact = false }) {
@@ -31,7 +31,7 @@ export function OriginalFileUpload({ video, capabilities, onUpdated, compact = f
   return (
     <div className="space-y-3">
       {!compact && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-subtle">
           Download your own video from YouTube Studio (<strong>Content</strong> → hover the video → <strong>⋮ Options</strong> →{" "}
           <strong>Download</strong>) and upload it here. It must be the same video so the clip times line up.
         </p>
@@ -39,26 +39,26 @@ export function OriginalFileUpload({ video, capabilities, onUpdated, compact = f
       {capabilities && !capabilities.rendering && (
         <Alert tone="warning">{capabilities.ffmpeg_message}</Alert>
       )}
-      <label className="flex cursor-pointer flex-col items-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm hover:bg-slate-100">
+      <label className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-muted/50 bg-canvas px-4 py-6 text-center text-sm transition-colors hover:border-ink/40 hover:bg-mist focus-within:border-ink">
         <input type="file" accept={accept} className="sr-only" onChange={(e) => e.target.files[0] && setFile(e.target.files[0])} />
         {file ? (
-          <span><strong>{file.name}</strong> · {formatBytes(file.size)} <span className="text-slate-500">(click to change)</span></span>
+          <span><strong>{file.name}</strong> · {formatBytes(file.size)} <span className="text-muted">(click to change)</span></span>
         ) : (
-          <span className="text-slate-600">Click to choose the original video file ({accept.replaceAll(",", ", ")})</span>
+          <span className="text-subtle">Click to choose the original video file ({accept.replaceAll(",", ", ")})</span>
         )}
       </label>
       {progress !== null && (
         <div aria-live="polite">
-          <div className="mb-1 flex justify-between text-xs text-slate-600">
+          <div className="mb-1 flex justify-between text-xs text-subtle">
             <span>{progress < 1 ? "Uploading…" : "Checking the file…"}</span>
             <span className="tabular-nums">{Math.round(progress * 100)}%</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full bg-brand-600 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
+          <div className="h-1.5 overflow-hidden rounded-full bg-mist">
+            <div className="h-full bg-ink transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
         </div>
       )}
-      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
       <Button onClick={handleUpload} loading={progress !== null} disabled={!file || (capabilities && !capabilities.rendering)}>
         Attach original video
       </Button>
@@ -112,31 +112,23 @@ export function TranscriptOptions({ video, capabilities, onUpdated }) {
         title="Step 1 · Add the transcript"
         description="Clips are chosen from a timestamped transcript. YouTube doesn't allow apps to download videos, so pick one option."
       />
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-5 pt-3" role="tablist">
-        {TABS.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === option.key}
-            onClick={() => {
-              setTab(option.key);
-              setError("");
-            }}
-            className={`whitespace-nowrap rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium ${
-              tab === option.key ? "border-brand-600 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="px-5 pt-5">
+        <Tabs
+          label="Transcript source"
+          value={tab}
+          onChange={(key) => {
+            setTab(key);
+            setError("");
+          }}
+          items={TABS.map((option) => ({ value: option.key, label: option.label }))}
+        />
       </div>
 
       <div className="space-y-4 p-5">
         {tab === "captions" &&
           (clientId ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-subtle">
                 Sign in with the Google account that <strong>owns this video's channel</strong>. YouTube only shares caption files
                 with the video's owner or editors. We use the permission once to read the captions and don't store it.
               </p>
@@ -151,7 +143,7 @@ export function TranscriptOptions({ video, capabilities, onUpdated }) {
 
         {tab === "paste" && (
           <>
-            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-subtle">
               <li>Open the video on YouTube and click <strong>…more</strong> under the title.</li>
               <li>Click <strong>Show transcript</strong> (timestamps must be visible).</li>
               <li>Select all transcript lines, copy, and paste them below. SRT/VTT caption files also work.</li>
@@ -169,7 +161,7 @@ export function TranscriptOptions({ video, capabilities, onUpdated }) {
 
         {tab === "original" && (
           <>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-subtle">
               We'll transcribe it locally <strong>and</strong> render real 9:16 MP4 clips with subtitles.
             </p>
             <OriginalFileUpload video={video} capabilities={capabilities} onUpdated={onUpdated} compact />

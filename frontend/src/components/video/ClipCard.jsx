@@ -1,3 +1,4 @@
+import { Download, PencilLine, Play, RefreshCw, Timer } from "lucide-react";
 import { useState } from "react";
 
 import { useToast } from "../../hooks/useToast";
@@ -21,23 +22,23 @@ function PreviewArea({ clip, previewUrl, mediaType }) {
         controls
         playsInline
         preload="metadata"
-        className="aspect-[9/16] w-full rounded-lg bg-slate-900 object-contain"
+        className="aspect-[9/16] w-full rounded-lg bg-ink object-contain"
         aria-label={`Preview of ${clip.title}`}
       />
     );
   }
   if (clip.render_status === "queued" || clip.render_status === "rendering") {
     return (
-      <div className={`${frame} bg-slate-100 text-slate-600`} role="status">
-        <Spinner className="size-6 text-brand-600" />
+      <div className={`${frame} border border-line bg-mist text-subtle`} role="status">
+        <Spinner className="size-6 text-ink" />
         {clip.render_status === "queued" ? "Waiting to render…" : "Rendering vertical video…"}
       </div>
     );
   }
   return (
-    <div className={`${frame} border border-dashed border-slate-300 bg-slate-50 text-slate-500`}>
-      <span className="text-2xl" aria-hidden="true">⏱</span>
-      <p className="font-medium text-slate-700">Timestamp suggestion</p>
+    <div className={`${frame} border border-dashed border-muted/40 bg-canvas text-muted`}>
+      <Timer className="size-6 text-muted" strokeWidth={1.5} aria-hidden="true" />
+      <p className="font-medium text-graphite">Timestamp suggestion</p>
       <p>
         {clip.render_status === "failed"
           ? clip.render_error || "Rendering failed."
@@ -107,7 +108,7 @@ function ClipEditor({ clip, onSaved, onCancel }) {
       <TextArea label="Caption" rows={3} value={form.caption} onChange={set("caption")} maxLength={2200} />
       <TextInput label="Call to action" value={form.cta} onChange={set("cta")} maxLength={300} />
       <TextInput label="Hashtags" hint="Separate with spaces." value={form.hashtags} onChange={set("hashtags")} />
-      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
         <Button type="submit" loading={saving}>Save clip</Button>
@@ -145,18 +146,18 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange,
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
         {onToggleSelect && (
           <input
             type="checkbox"
-            className="size-4 accent-brand-600"
+            className="size-4 accent-ink"
             checked={selected}
             onChange={onToggleSelect}
             aria-label={`Select clip ${number}`}
           />
         )}
-        <span className="text-xs font-semibold text-slate-400">#{number}</span>
-        <h3 className="min-w-0 flex-1 truncate font-semibold text-slate-900" title={clip.title}>{clip.title}</h3>
+        <span className="text-xs font-semibold tabular-nums text-muted">{String(number).padStart(2, "0")}</span>
+        <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-ink" title={clip.title}>{clip.title}</h3>
         {clip.provider === "mock" && <DemoBadge />}
         <VideoStatusBadge status={clip.render_status} kind="clip" />
       </div>
@@ -164,13 +165,14 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange,
       <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,11rem)_1fr]">
         <div className="mx-auto w-full max-w-44 sm:max-w-none">
           <PreviewArea clip={clip} previewUrl={previewUrl} mediaType={mediaType} />
-          <p className="mt-2 text-center text-xs tabular-nums text-slate-500">
-            {formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {Math.round(clip.duration_seconds)}s
+          <p className="mt-2 text-center text-xs tabular-nums text-muted">
+            {formatTime(clip.start_seconds)}–{formatTime(clip.end_seconds)} · {Math.round(clip.duration_seconds)}s
             {clip.file_size_bytes ? ` · ${formatBytes(clip.file_size_bytes)}` : ""}
           </p>
           {youtubeVideoId && clip.render_status !== "rendered" && (
             <Button variant="ghost" size="sm" className="mt-1 w-full" aria-expanded={showYouTube} onClick={() => setShowYouTube((v) => !v)}>
-              {showYouTube ? "Hide YouTube preview" : "▶ Watch this moment on YouTube"}
+              {!showYouTube && <Play className="size-3.5" aria-hidden="true" />}
+              {showYouTube ? "Hide YouTube preview" : "Watch on YouTube"}
             </Button>
           )}
         </div>
@@ -188,24 +190,24 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange,
           ) : (
             <div className="space-y-4 text-sm">
               <div>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">Opening hook</h4>
-                <p className="mt-1 font-semibold text-slate-900">{clip.hook}</p>
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted">Opening hook</h4>
+                <p className="mt-1 font-semibold text-ink">{clip.hook}</p>
               </div>
               <div>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">Caption</h4>
-                <p className="mt-1 whitespace-pre-wrap text-slate-700">{clip.caption}</p>
-                {clip.cta && <p className="mt-1 font-medium text-slate-800">{clip.cta}</p>}
-                {clip.hashtags?.length > 0 && <p className="mt-1 text-brand-700">{hashtagLine(clip.hashtags)}</p>}
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted">Caption</h4>
+                <p className="mt-1 whitespace-pre-wrap text-graphite">{clip.caption}</p>
+                {clip.cta && <p className="mt-1 font-medium text-graphite">{clip.cta}</p>}
+                {clip.hashtags?.length > 0 && <p className="mt-1 text-ink">{hashtagLine(clip.hashtags)}</p>}
               </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-slate-500">Why this moment</h4>
-                <p className="mt-1 text-slate-700">{clip.reason}</p>
+              <div className="rounded-lg bg-canvas p-3">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted">Why this moment</h4>
+                <p className="mt-1 text-graphite">{clip.reason}</p>
               </div>
               <details className="group">
-                <summary className="cursor-pointer text-sm font-medium text-slate-600 hover:text-slate-900">
+                <summary className="cursor-pointer text-sm font-medium text-subtle hover:text-ink">
                   Transcript excerpt
                 </summary>
-                <p className="mt-2 whitespace-pre-wrap text-slate-600">{clip.transcript_excerpt}</p>
+                <p className="mt-2 whitespace-pre-wrap text-subtle">{clip.transcript_excerpt}</p>
               </details>
             </div>
           )}
@@ -213,28 +215,29 @@ export default function ClipCard({ clip, number, mediaType, canRender, onChange,
       </div>
 
       {showYouTube && youtubeVideoId && (
-        <div className="border-t border-slate-100 px-5 py-4">
+        <div className="border-t border-line px-5 py-4">
           <YouTubeEmbed videoId={youtubeVideoId} title={clip.title} start={clip.start_seconds} end={clip.end_seconds} />
-          <p className="mt-2 text-xs text-slate-500">Streaming from YouTube. This is a preview, not a downloadable file.</p>
+          <p className="mt-2 text-xs text-muted">Streaming from YouTube. This is a preview, not a downloadable file.</p>
         </div>
       )}
 
       {!editing && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line bg-canvas px-5 py-3">
           {clip.render_status === "rendered" && downloadUrl && (
             <a
               href={downloadUrl}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-ink px-3 text-[13px] font-medium text-paper shadow-xs transition-colors hover:bg-graphite"
             >
-              ↓ Download MP4
+              <Download className="size-3.5" aria-hidden="true" /> Download MP4
             </a>
           )}
           <CopyButton text={copyText} label="Copy caption" />
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)} disabled={busy}>
-            Edit
+            <PencilLine className="size-3.5" aria-hidden="true" /> Edit
           </Button>
           {showRender && (
             <Button variant="secondary" size="sm" onClick={handleRender} loading={rendering}>
+              {!rendering && <RefreshCw className="size-3.5" aria-hidden="true" />}
               {clip.render_status === "rendered" ? "Re-render" : "Render video"}
             </Button>
           )}

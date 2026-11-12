@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useToast } from "../../hooks/useToast";
 import { formatTime } from "../../lib/videoFormat";
+import { clearPendingVideoUrl, isYouTubeUrl, peekPendingVideoUrl } from "../../lib/pendingVideoUrl";
 import { videoApi } from "../../services/videoApi";
 import { Alert, Button, Card, TextInput } from "../ui";
 import YouTubeEmbed from "./YouTubeEmbed";
@@ -11,7 +13,12 @@ import YouTubeEmbed from "./YouTubeEmbed";
 export default function YouTubeLinkForm({ capabilities }) {
   const navigate = useNavigate();
   const toast = useToast();
-  const [url, setUrl] = useState("");
+  // Pre-fill a YouTube link typed on the landing page, then forget it.
+  const [url, setUrl] = useState(() => {
+    const pending = peekPendingVideoUrl();
+    return isYouTubeUrl(pending) ? pending : "";
+  });
+  useEffect(() => clearPendingVideoUrl(), []);
   const [info, setInfo] = useState(null); // validated preview for `validatedUrl`
   const [validatedUrl, setValidatedUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -66,10 +73,11 @@ export default function YouTubeLinkForm({ capabilities }) {
             onChange={(e) => setUrl(e.target.value)}
           />
           <Button type="submit" variant={isValidated ? "secondary" : "primary"} loading={validating}>
-            {isValidated ? "Validated ✓" : "Validate link"}
+            {isValidated && <Check className="size-4" aria-hidden="true" />}
+            {isValidated ? "Validated" : "Validate link"}
           </Button>
         </form>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           Supported: youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/…, youtube.com/live/…, youtube.com/embed/…
         </p>
         {error && <Alert>{error}</Alert>}
@@ -85,20 +93,20 @@ export default function YouTubeLinkForm({ capabilities }) {
             )}
             <div className="space-y-4">
               <div>
-                <p className="font-semibold leading-snug text-slate-900">{info.title}</p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="font-semibold leading-snug text-ink">{info.title}</p>
+                <p className="mt-1 text-sm text-muted">
                   {info.channel_title}
                   {info.duration_seconds ? ` · ${formatTime(info.duration_seconds)}` : ""}
                 </p>
                 {info.has_captions === false && (
-                  <p className="mt-2 text-xs text-amber-700">YouTube reports no captions yet; you can paste a transcript or upload the original.</p>
+                  <p className="mt-2 text-xs text-subtle">YouTube reports no captions yet; you can paste a transcript or upload the original.</p>
                 )}
               </div>
               <TextInput label="Project title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
               <div>
-                <label htmlFor="yt-clip-count" className="mb-1.5 flex justify-between text-sm font-medium text-slate-800">
+                <label htmlFor="yt-clip-count" className="mb-1.5 flex justify-between text-sm font-medium text-graphite">
                   <span>Number of clips</span>
-                  <span className="tabular-nums text-brand-700">{clipCount}</span>
+                  <span className="tabular-nums text-ink">{clipCount}</span>
                 </label>
                 <input
                   id="yt-clip-count"
@@ -107,13 +115,13 @@ export default function YouTubeLinkForm({ capabilities }) {
                   max={capabilities?.max_clips || 10}
                   value={clipCount}
                   onChange={(e) => setClipCount(Number(e.target.value))}
-                  className="w-full accent-brand-600"
+                  className="w-full accent-ink"
                 />
               </div>
               <Button className="w-full" size="lg" onClick={handleCreate} loading={creating} disabled={!isValidated}>
                 Continue: add transcript
               </Button>
-              {!isValidated && <p className="text-xs text-amber-700">The link changed. Validate it again.</p>}
+              {!isValidated && <p className="text-xs text-subtle">The link changed. Validate it again.</p>}
             </div>
           </div>
         </Card>

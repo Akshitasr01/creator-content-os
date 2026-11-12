@@ -28,17 +28,19 @@ export default function CreatorOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="mx-auto flex h-16 max-w-3xl items-center px-4 sm:px-6">
+    <div className="min-h-screen bg-canvas">
+      <header className="border-b border-line bg-paper">
+        <div className="mx-auto flex h-16 max-w-3xl items-center px-4 sm:px-6">
         <Logo />
+        </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-        <div className="mb-8 mt-4">
-          <p className="text-sm font-medium text-brand-600">Step 1 of 2 · Creator profile</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+        <div className="mb-8 mt-10">
+          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-muted">Step 1 of 2 · Creator profile</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             Tell us how you create
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 text-subtle">
             This takes about two minutes. Everything here can be edited later in Settings.
           </p>
         </div>

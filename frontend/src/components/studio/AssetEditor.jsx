@@ -70,8 +70,8 @@ export default function AssetEditor({ type, content, onSave, onCancel }) {
         <>
           <TextInput label="Title" required value={draft.title} onChange={set("title")} />
           {draft.slides.map((slide, index) => (
-            <fieldset key={index} className="grid gap-3 rounded-lg p-4 ring-1 ring-slate-200">
-              <legend className="px-1 text-xs font-medium text-slate-500">Slide {index + 1}</legend>
+            <fieldset key={index} className="grid gap-3 rounded-lg p-4 border border-line">
+              <legend className="px-1 text-xs font-medium text-muted">Slide {index + 1}</legend>
               <TextInput label="Heading" required value={slide.heading} onChange={(e) => setSlide(index, "heading", e.target.value)} />
               <TextArea label="Body" rows={2} value={slide.body} onChange={(e) => setSlide(index, "body", e.target.value)} />
             </fieldset>

@@ -1,3 +1,4 @@
+import { ArrowRight, ScanText } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -5,7 +6,7 @@ import ContentBrief from "../components/project/ContentBrief";
 import GeneratePanel from "../components/project/GeneratePanel";
 import IdeaList from "../components/project/IdeaList";
 import StatusBadge from "../components/StatusBadge";
-import { Alert, Button, Card, CardHeader, DemoBadge, EmptyState, PageHeader, PageSpinner } from "../components/ui";
+import { Alert, BackLink, Button, Card, CardHeader, DemoBadge, Disclosure, EmptyState, PageHeader, PageSpinner, Steps } from "../components/ui";
 import { useApiData } from "../hooks/useApiData";
 import { useProfile } from "../hooks/useProfile";
 import { useToast } from "../hooks/useToast";
@@ -102,9 +103,7 @@ function ProjectWorkspace({ projectId }) {
     <>
       <PageHeader
         eyebrow={
-          <Link to="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-800">
-            ← All projects
-          </Link>
+          <BackLink to="/dashboard">All projects</BackLink>
         }
         title={project.title}
         description={
@@ -117,28 +116,32 @@ function ProjectWorkspace({ projectId }) {
           assetCount > 0 && (
             <Link
               to={`/projects/${projectId}/studio`}
-              className="inline-flex h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-medium text-paper shadow-xs transition-colors hover:bg-graphite"
             >
-              Open Content Studio ({assetCount})
+              Open Content Studio ({assetCount}) <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           )
         }
       />
 
       <div className="space-y-6">
+        <Steps
+          className="rounded-xl border border-line bg-paper px-5 py-4 shadow-xs"
+          steps={[
+            { label: "Analyze", state: analysis ? "done" : "active" },
+            { label: "Pick ideas", state: !analysis ? "todo" : ideas.length ? "done" : "active" },
+            { label: "Generate", state: assetCount > 0 ? "done" : ideas.length ? "active" : "todo" },
+            { label: "Edit in studio", state: assetCount > 0 ? "active" : "todo" },
+          ]}
+        />
+
         {(actionError || (project.status === "failed" && project.error_message)) && (
           <Alert title="Something went wrong">{actionError || project.error_message}</Alert>
         )}
 
-        <details className="group rounded-xl border border-slate-200 bg-white shadow-sm">
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-slate-700 hover:text-slate-900">
-            <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden="true">›</span>
-            View source content
-          </summary>
-          <p className="max-h-96 overflow-y-auto whitespace-pre-wrap border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-700">
-            {project.source_text}
-          </p>
-        </details>
+        <Disclosure summary="View source content">
+          <p className="max-h-96 overflow-y-auto whitespace-pre-wrap px-5 py-4 text-sm leading-relaxed text-graphite">{project.source_text}</p>
+        </Disclosure>
 
         {/* Step 1: analysis */}
         {analysis ? (
@@ -150,7 +153,7 @@ function ProjectWorkspace({ projectId }) {
           />
         ) : (
           <EmptyState
-            icon="1"
+            icon={ScanText}
             title="Analyze your content"
             description="We'll read your source and build a Content Brief: topic, audience, key themes, claims and hooks. You can correct it before generating anything."
             action={
@@ -194,7 +197,7 @@ function ProjectWorkspace({ projectId }) {
             {ideas.length > 0 ? (
               <IdeaList ideas={ideas} selected={selected} onToggle={toggleIdea} />
             ) : (
-              <p className="px-5 py-8 text-center text-sm text-slate-500">
+              <p className="px-5 py-8 text-center text-sm text-muted">
                 {busy === "ideas" ? "Finding the strongest angles…" : "No ideas yet."}
               </p>
             )}

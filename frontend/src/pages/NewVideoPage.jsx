@@ -1,9 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
-import { Alert, Button, Card, PageHeader, PageSpinner, TextInput } from "../components/ui";
+import { FileCheck2, UploadCloud } from "lucide-react";
+
+import { Alert, BackLink, Button, Card, IconTile, PageHeader, PageSpinner, TextInput } from "../components/ui";
 import { useApiData } from "../hooks/useApiData";
 import { useToast } from "../hooks/useToast";
+import { clearPendingVideoUrl, isYouTubeUrl, peekPendingVideoUrl } from "../lib/pendingVideoUrl";
 import { formatBytes } from "../lib/videoFormat";
 import { videoApi } from "../services/videoApi";
 import YouTubeLinkForm from "../components/video/YouTubeLinkForm";
@@ -41,22 +44,22 @@ function FileDrop({ accept, file, onFile, maxMb }) {
         setDragging(false);
         if (event.dataTransfer.files[0]) onFile(event.dataTransfer.files[0]);
       }}
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-        dragging ? "border-brand-500 bg-brand-50" : "border-slate-300 bg-slate-50 hover:bg-slate-100"
+      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-6 py-12 text-center transition-colors focus-within:border-ink ${
+        dragging ? "border-ink bg-mist" : "border-muted/50 bg-canvas hover:border-ink/40 hover:bg-mist"
       }`}
     >
       <input type="file" accept={accept} className="sr-only" onChange={(event) => event.target.files[0] && onFile(event.target.files[0])} />
       {file ? (
         <>
-          <span className="text-2xl" aria-hidden="true">✓</span>
-          <p className="mt-2 font-medium text-slate-900">{file.name}</p>
-          <p className="text-sm text-slate-500">{formatBytes(file.size)} · click to choose a different file</p>
+          <IconTile icon={FileCheck2} inverted />
+          <p className="mt-3 font-medium text-ink">{file.name}</p>
+          <p className="text-sm text-muted">{formatBytes(file.size)} · click to choose a different file</p>
         </>
       ) : (
         <>
-          <span className="text-2xl" aria-hidden="true">⬆</span>
-          <p className="mt-2 font-medium text-slate-900">Drop a file here or click to browse</p>
-          <p className="text-sm text-slate-500">
+          <IconTile icon={UploadCloud} />
+          <p className="mt-3 font-medium text-ink">Drop a file here or click to browse</p>
+          <p className="text-sm text-muted">
             {accept.replaceAll(",", ", ")} · up to {maxMb >= 1024 ? `${maxMb / 1024} GB` : `${maxMb} MB`}
           </p>
         </>
@@ -73,7 +76,14 @@ export default function NewVideoPage() {
   const caps = useApiData(useCallback(() => videoApi.capabilities(), []));
 
   const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
+  // Pre-fill a direct video link typed on the landing page, then forget it.
+  const [url, setUrl] = useState(() => {
+    const pending = mode === "link" ? peekPendingVideoUrl() : "";
+    return pending && !isYouTubeUrl(pending) ? pending : "";
+  });
+  useEffect(() => {
+    if (mode === "link") clearPendingVideoUrl();
+  }, [mode]);
   const [file, setFile] = useState(null);
   const [clipCount, setClipCount] = useState(5);
   const [errors, setErrors] = useState({});
@@ -123,7 +133,7 @@ export default function NewVideoPage() {
 
   const header = (
     <PageHeader
-      eyebrow={<Link to="/create" className="text-sm font-medium text-slate-500 hover:text-slate-800">← Choose a different source</Link>}
+      eyebrow={<BackLink to="/create">Choose a different source</BackLink>}
       title={MODES[mode].title}
       description={MODES[mode].description}
     />
@@ -181,36 +191,37 @@ export default function NewVideoPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 error={errors.url}
               />
-              <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 ring-1 ring-slate-200">
-                <p className="font-medium text-slate-800">Supported links</p>
+              <div className="rounded-lg border border-line bg-canvas p-4 text-sm text-subtle">
+                <p className="font-medium text-graphite">Supported links</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
                   <li>Direct <strong>https</strong> links to a media file you own or have rights to, ending in {capabilities?.video_extensions.join(", ")} (or audio).</li>
                   <li>
-                    <strong>Not supported:</strong> YouTube, Instagram, TikTok, Facebook, X, Vimeo and similar pages. These platforms
-                    don't permit downloading by third-party tools. Download your own video from the platform's creator tools
-                    (e.g. YouTube Studio), then use{" "}
-                    <Link to="/videos/new?source=upload" className="font-medium text-brand-600 hover:text-brand-700">Upload video</Link>.
+                    <strong>Not supported here:</strong> Instagram, TikTok, Facebook, X, Vimeo and similar pages, which don't permit
+                    downloading by third-party tools. For YouTube, use the{" "}
+                    <Link to="/videos/new?source=youtube" className="font-medium text-ink underline underline-offset-4">YouTube link</Link> option.
+                    For other platforms, download your own video from their creator tools, then{" "}
+                    <Link to="/videos/new?source=upload" className="font-medium text-ink underline underline-offset-4">upload it</Link>.
                   </li>
                 </ul>
               </div>
             </div>
           ) : (
             <div>
-              <p className="mb-1.5 text-sm font-medium text-slate-800">
-                {mode === "audio" ? "Audio file" : "Video file"} <span className="text-red-600">*</span>
+              <p className="mb-1.5 text-sm font-medium text-graphite">
+                {mode === "audio" ? "Audio file" : "Video file"} <span className="text-danger">*</span>
               </p>
               <FileDrop accept={accept} file={file} maxMb={capabilities?.max_upload_mb || 0} onFile={(f) => { setFile(f); setErrors((c) => ({ ...c, file: undefined })); }} />
-              {errors.file && <p className="mt-1.5 text-sm text-red-600">{errors.file}</p>}
-              <p className="mt-1.5 text-xs text-slate-500">
+              {errors.file && <p className="mt-1.5 text-sm text-danger">{errors.file}</p>}
+              <p className="mt-1.5 text-xs text-muted">
                 Only upload content you own or have permission to use. Max length {capabilities?.max_duration_minutes} minutes.
               </p>
             </div>
           )}
 
           <div>
-            <label htmlFor="clip-count" className="mb-1.5 flex justify-between text-sm font-medium text-slate-800">
+            <label htmlFor="clip-count" className="mb-1.5 flex justify-between text-sm font-medium text-graphite">
               <span>Number of clips</span>
-              <span className="tabular-nums text-brand-700">{clipCount}</span>
+              <span className="tabular-nums text-ink">{clipCount}</span>
             </label>
             <input
               id="clip-count"
@@ -219,9 +230,9 @@ export default function NewVideoPage() {
               max={capabilities?.max_clips || 10}
               value={clipCount}
               onChange={(e) => setClipCount(Number(e.target.value))}
-              className="w-full accent-brand-600"
+              className="w-full accent-ink"
             />
-            <p className="mt-1 text-xs text-slate-500">Up to 10. Fewer clips are returned if the recording has fewer strong moments.</p>
+            <p className="mt-1 text-xs text-muted">Up to 10. Fewer clips are returned if the recording has fewer strong moments.</p>
           </div>
         </Card>
 
@@ -232,12 +243,12 @@ export default function NewVideoPage() {
 
         {uploadProgress !== null && (
           <div aria-live="polite">
-            <div className="mb-1 flex justify-between text-sm text-slate-600">
+            <div className="mb-1 flex justify-between text-sm text-subtle">
               <span>{uploadProgress < 1 ? "Uploading…" : "Upload complete, checking the file…"}</span>
               <span className="tabular-nums">{Math.round(uploadProgress * 100)}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full bg-brand-600 transition-all" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
+            <div className="h-2 overflow-hidden rounded-full bg-mist">
+              <div className="h-full bg-ink transition-all" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
             </div>
           </div>
         )}

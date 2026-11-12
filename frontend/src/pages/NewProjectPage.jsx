@@ -1,7 +1,8 @@
+import { AudioLines } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { Alert, Button, Card, PageHeader, TextArea, TextInput } from "../components/ui";
+import { Alert, BackLink, Button, Card, PageHeader, TextArea, TextInput } from "../components/ui";
 import { useProfile } from "../hooks/useProfile";
 import { useToast } from "../hooks/useToast";
 import { SOURCE_MAX_CHARS, SOURCE_MIN_CHARS, SOURCE_TYPES } from "../lib/constants";
@@ -62,7 +63,8 @@ export default function NewProjectPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        title="New project"
+        eyebrow={<BackLink to="/create">Choose a different source</BackLink>}
+        title="New text project"
         description="Paste one long-form piece of content. You'll review what the AI understood before anything is generated."
       />
 
@@ -74,14 +76,15 @@ export default function NewProjectPage() {
         noValidate
         className="space-y-6"
       >
-        <Card className="p-5">
+        <Card className="px-5 py-3.5">
           <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-slate-600">
-              Writing as <strong className="text-slate-900">{profile.creator_name}</strong> · {profile.language}
+            <p className="flex flex-wrap items-center gap-x-2 text-subtle">
+              <AudioLines className="size-4 shrink-0 text-ink" aria-hidden="true" />
+              Writing as <strong className="text-ink">{profile.creator_name}</strong> · {profile.language}
               {profile.tone ? ` · ${profile.tone}` : ""}
             </p>
-            <Link to="/settings" className="font-medium text-brand-600 hover:text-brand-700">
-              Edit creator profile
+            <Link to="/settings" className="text-[13px] font-medium text-subtle transition-colors hover:text-ink">
+              Edit brand voice
             </Link>
           </div>
         </Card>
@@ -101,12 +104,12 @@ export default function NewProjectPage() {
           />
 
           <fieldset>
-            <legend className="mb-1.5 text-sm font-medium text-slate-800">Source type</legend>
+            <legend className="mb-1.5 text-sm font-medium text-graphite">Source type</legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {SOURCE_TYPES.map((type) => (
                 <label
                   key={type.value}
-                  className="cursor-pointer rounded-lg p-3 text-sm ring-1 ring-slate-300 has-checked:bg-brand-50 has-checked:ring-2 has-checked:ring-brand-500"
+                  className="group cursor-pointer rounded-lg border border-line bg-paper p-3 text-sm transition-colors hover:bg-mist has-checked:border-ink has-checked:bg-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
                 >
                   <input
                     type="radio"
@@ -116,8 +119,8 @@ export default function NewProjectPage() {
                     onChange={() => setSourceType(type.value)}
                     className="sr-only"
                   />
-                  <span className="block font-medium text-slate-900">{type.label}</span>
-                  <span className="block text-xs text-slate-500">{type.hint}</span>
+                  <span className="block font-medium text-ink group-has-checked:text-paper">{type.label}</span>
+                  <span className="mt-0.5 block text-xs text-muted group-has-checked:text-paper/70">{type.hint}</span>
                 </label>
               ))}
             </div>
@@ -136,7 +139,7 @@ export default function NewProjectPage() {
               }}
               error={errors.sourceText}
             />
-            <p className={`mt-1.5 text-right text-xs ${length && !lengthOk ? "text-amber-700" : "text-slate-500"}`}>
+            <p className={`mt-1.5 text-right text-xs tabular-nums ${length && !lengthOk ? "font-medium text-ink" : "text-muted"}`}>
               {length.toLocaleString()} / {SOURCE_MAX_CHARS.toLocaleString()} characters
               {length > 0 && length < SOURCE_MIN_CHARS && ` · ${SOURCE_MIN_CHARS - length} more needed`}
             </p>

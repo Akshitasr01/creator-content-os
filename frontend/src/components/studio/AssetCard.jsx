@@ -1,3 +1,4 @@
+import { Check, History, PencilLine, WandSparkles } from "lucide-react";
 import { useState } from "react";
 
 import { useToast } from "../../hooks/useToast";
@@ -5,7 +6,7 @@ import { CONTENT_TYPES, formatDate, REWRITE_OPTIONS } from "../../lib/constants"
 import { api } from "../../services/api";
 import CopyButton from "../CopyButton";
 import StatusBadge from "../StatusBadge";
-import { Badge, Button, Card, DemoBadge, Spinner } from "../ui";
+import { Badge, Button, Card, DemoBadge, DropdownMenu, Spinner } from "../ui";
 import AssetEditor from "./AssetEditor";
 import AssetView from "./AssetView";
 import { assetToText } from "./assetFormat";
@@ -64,29 +65,29 @@ export default function AssetCard({ asset, number, ideaTitle, onChange }) {
   return (
     <Card className="relative overflow-hidden">
       {busy === "rewrite" && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-white/80 text-sm text-slate-600 backdrop-blur-sm" role="status">
-          <Spinner className="size-6 text-brand-600" />
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-paper/80 text-sm text-subtle backdrop-blur-sm" role="status">
+          <Spinner className="size-6 text-ink" />
           Rewriting this asset…
         </div>
       )}
 
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-slate-900">
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink">
               {config.label} {number}
             </h3>
             <StatusBadge status={asset.status} />
             {asset.provider === "mock" && <DemoBadge />}
             {asset.version > 1 && <Badge>v{asset.version}</Badge>}
           </div>
-          {ideaTitle && <p className="mt-1 truncate text-sm text-slate-500">Idea: {ideaTitle}</p>}
+          {ideaTitle && <p className="mt-1 truncate text-sm text-muted">Idea: {ideaTitle}</p>}
         </div>
         {!editing && (
           <div className="flex flex-wrap items-center gap-2">
             <CopyButton text={assetToText(type, asset.content)} label="Copy all" />
             <Button variant="secondary" size="sm" onClick={() => setEditing(true)} disabled={Boolean(busy)}>
-              Edit
+              <PencilLine className="size-3.5" aria-hidden="true" /> Edit
             </Button>
           </div>
         )}
@@ -101,25 +102,9 @@ export default function AssetCard({ asset, number, ideaTitle, onChange }) {
       </div>
 
       {!editing && (
-        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-line bg-canvas px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <label className="sr-only" htmlFor={`rewrite-${asset.id}`}>
-              Rewrite this asset
-            </label>
-            <select
-              id={`rewrite-${asset.id}`}
-              value=""
-              disabled={Boolean(busy)}
-              onChange={(event) => event.target.value && rewrite(event.target.value)}
-              className="h-8 rounded-lg border-0 bg-white px-2 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-brand-500 disabled:opacity-60"
-            >
-              <option value="">✨ Rewrite…</option>
-              {REWRITE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <DropdownMenu label="Rewrite" icon={WandSparkles} items={REWRITE_OPTIONS} onSelect={rewrite} disabled={Boolean(busy)} />
             <Button
               variant={isApproved ? "primary" : "secondary"}
               size="sm"
@@ -131,11 +116,12 @@ export default function AssetCard({ asset, number, ideaTitle, onChange }) {
                   isApproved ? "Moved back to draft." : "Approved.")
               }
             >
-              {isApproved ? "✓ Approved" : "Approve"}
+              <Check className="size-3.5" aria-hidden="true" />
+              {isApproved ? "Approved" : "Approve"}
             </Button>
             {history.length > 0 && (
               <Button variant="ghost" size="sm" aria-expanded={showHistory} onClick={() => setShowHistory((s) => !s)}>
-                History ({history.length})
+                <History className="size-3.5" aria-hidden="true" /> History ({history.length})
               </Button>
             )}
           </div>
@@ -144,13 +130,13 @@ export default function AssetCard({ asset, number, ideaTitle, onChange }) {
       )}
 
       {showHistory && !editing && (
-        <div className="border-t border-slate-100 px-5 py-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-900">Previous versions</h4>
+        <div className="border-t border-line px-5 py-4">
+          <h4 className="mb-3 text-sm font-semibold text-ink">Previous versions</h4>
           <ol className="space-y-3">
             {[...history].reverse().map((version) => (
-              <li key={`${version.version}-${version.replaced_at}`} className="rounded-lg p-3 text-sm ring-1 ring-slate-200">
+              <li key={`${version.version}-${version.replaced_at}`} className="rounded-lg border border-line p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-slate-600">
+                  <span className="text-subtle">
                     v{version.version} · replaced by {String(version.replaced_by).replace(/_/g, " ")} · {formatDate(version.replaced_at)}
                   </span>
                   <Button
@@ -162,7 +148,7 @@ export default function AssetCard({ asset, number, ideaTitle, onChange }) {
                     Restore
                   </Button>
                 </div>
-                <p className="mt-2 line-clamp-2 text-slate-500">{assetToText(type, version.content)}</p>
+                <p className="mt-2 line-clamp-2 text-muted">{assetToText(type, version.content)}</p>
               </li>
             ))}
           </ol>

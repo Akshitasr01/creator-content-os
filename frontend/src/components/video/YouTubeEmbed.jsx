@@ -7,7 +7,7 @@ export default function YouTubeEmbed({ videoId, title, start, end, className = "
   if (start !== undefined) params.set("start", String(Math.floor(start)));
   if (end !== undefined) params.set("end", String(Math.ceil(end)));
   return (
-    <div className={`aspect-video w-full overflow-hidden rounded-lg bg-slate-900 ${className}`}>
+    <div className={`aspect-video w-full overflow-hidden rounded-lg bg-ink ${className}`}>
       <iframe
         className="size-full"
         src={`https://www.youtube-nocookie.com/embed/${videoId}?${params}`}

@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Clapperboard, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from "../components/ui";
@@ -12,22 +13,22 @@ export default function VideosPage() {
   const newButton = (
     <Link
       to="/create"
-      className="inline-flex h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+      className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-medium text-paper shadow-xs transition-colors hover:bg-graphite"
     >
-      + New video project
+      <Plus className="size-4" aria-hidden="true" /> New video project
     </Link>
   );
 
   return (
     <>
-      <PageHeader title="Video projects" description="Long-form videos and audio turned into short-form clips." actions={newButton} />
+      <PageHeader title="Video clips" description="Long-form videos and audio turned into short-form clips." />
       {videos.loading && <PageSpinner label="Loading video projects…" />}
       {videos.error && (
         <Alert action={<Button variant="secondary" size="sm" onClick={videos.reload}>Try again</Button>}>{videos.error}</Alert>
       )}
       {videos.data?.length === 0 && (
         <EmptyState
-          icon="▶"
+          icon={Clapperboard}
           title="No video projects yet"
           description="Upload a long-form video and get up to 10 vertical reels with subtitles."
           action={newButton}

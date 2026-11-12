@@ -1,7 +1,8 @@
+import { Check, Circle, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { Alert, Button, Card, CardHeader, EmptyState, PageHeader, PageSpinner } from "../components/ui";
+import { Alert, BackLink, Button, Card, CardHeader, Disclosure, EmptyState, PageHeader, PageSpinner } from "../components/ui";
 import ClipCard from "../components/video/ClipCard";
 import ProcessingStatus from "../components/video/ProcessingStatus";
 import VideoStatusBadge from "../components/video/VideoStatusBadge";
@@ -49,22 +50,34 @@ function usePolledVideo(videoId) {
   return { ...state, refresh, setData };
 }
 
+function ChecklistItem({ done, children }) {
+  return (
+    <li className={`flex items-center gap-2.5 ${done ? "text-ink" : "text-muted"}`}>
+      {done ? (
+        <span className="flex size-4 items-center justify-center rounded-full bg-ink text-paper" aria-hidden="true">
+          <Check className="size-2.5" strokeWidth={3} />
+        </span>
+      ) : (
+        <Circle className="size-4 text-line" strokeWidth={2} aria-hidden="true" />
+      )}
+      <span>{children}</span>
+      <span className="sr-only">{done ? "(done)" : "(to do)"}</span>
+    </li>
+  );
+}
+
 function TranscriptPanel({ segments }) {
   return (
-    <details className="group rounded-xl border border-slate-200 bg-white shadow-sm">
-      <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-slate-700 hover:text-slate-900">
-        <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden="true">›</span>
-        Timestamped transcript ({segments.length} lines)
-      </summary>
-      <ol className="max-h-96 space-y-1 overflow-y-auto border-t border-slate-100 px-5 py-4 text-sm">
+    <Disclosure summary={`Timestamped transcript (${segments.length} lines)`}>
+      <ol className="max-h-96 space-y-1 overflow-y-auto px-5 py-4 text-sm">
         {segments.map((segment, index) => (
           <li key={index} className="flex gap-3">
-            <span className="w-12 shrink-0 tabular-nums text-slate-400">{formatTime(segment.start)}</span>
-            <span className="text-slate-700">{segment.text}</span>
+            <span className="w-12 shrink-0 tabular-nums text-muted">{formatTime(segment.start)}</span>
+            <span className="text-graphite">{segment.text}</span>
           </li>
         ))}
       </ol>
-    </details>
+    </Disclosure>
   );
 }
 
@@ -151,7 +164,7 @@ function VideoWorkspace({ videoId }) {
   return (
     <>
       <PageHeader
-        eyebrow={<Link to="/videos" className="text-sm font-medium text-slate-500 hover:text-slate-800">← All video projects</Link>}
+        eyebrow={<BackLink to="/videos">All video projects</BackLink>}
         title={video.title}
         description={
           <span className="flex flex-wrap items-center gap-2">
@@ -176,17 +189,35 @@ function VideoWorkspace({ videoId }) {
           <Card className="overflow-hidden">
             <div className="grid gap-5 p-5 md:grid-cols-[1.4fr_1fr] md:items-start">
               <YouTubeEmbed videoId={video.youtube_video_id} title={video.title} />
-              <div className="space-y-2 text-sm text-slate-600">
-                <p className="font-medium text-slate-900">Source: YouTube video</p>
+              <div className="space-y-2 text-sm text-subtle">
+                <p className="text-[15px] font-semibold tracking-tight text-ink">Source: YouTube video</p>
                 <p>
-                  <a href={video.youtube_url} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:text-brand-700">
-                    Open on YouTube ↗
+                  <a
+                    href={video.youtube_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-subtle transition-colors hover:text-ink"
+                  >
+                    Open on YouTube <ExternalLink className="size-3.5" aria-hidden="true" />
                   </a>
                 </p>
-                <ul className="space-y-1">
-                  <li>{hasTranscript ? "✓" : "○"} Transcript {video.transcript_source === "youtube_captions" ? "(YouTube captions)" : video.transcript_source === "manual" ? "(pasted)" : video.transcript_source === "whisper" ? "(transcribed from original)" : "needed"}</li>
-                  <li>{video.clips.length ? "✓" : "○"} Clip moments {video.clips.length ? `(${video.clips.length})` : ""}</li>
-                  <li>{video.source_file_available ? "✓ Original video attached" : "○ Original video (needed for MP4 downloads)"}</li>
+                <ul className="space-y-2.5 pt-2">
+                  <ChecklistItem done={hasTranscript}>
+                    Transcript{" "}
+                    {video.transcript_source === "youtube_captions"
+                      ? "(YouTube captions)"
+                      : video.transcript_source === "manual"
+                        ? "(pasted)"
+                        : video.transcript_source === "whisper"
+                          ? "(transcribed from original)"
+                          : "needed"}
+                  </ChecklistItem>
+                  <ChecklistItem done={video.clips.length > 0}>
+                    Clip moments {video.clips.length ? `(${video.clips.length})` : ""}
+                  </ChecklistItem>
+                  <ChecklistItem done={video.source_file_available}>
+                    {video.source_file_available ? "Original video attached" : "Original video (needed for MP4 downloads)"}
+                  </ChecklistItem>
                 </ul>
               </div>
             </div>
@@ -224,7 +255,7 @@ function VideoWorkspace({ videoId }) {
         {video.clips.length > 0 ? (
           <section aria-labelledby="clips-heading">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 id="clips-heading" className="text-lg font-semibold text-slate-900">Clips</h2>
+              <h2 id="clips-heading" className="text-[15px] font-semibold tracking-tight text-ink">Clips</h2>
               {canRender && (
                 <div className="flex flex-wrap items-center gap-2">
                   <Button

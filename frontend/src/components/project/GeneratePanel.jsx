@@ -1,3 +1,4 @@
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { CONTENT_TYPES, MAX_ASSETS_PER_REQUEST } from "../../lib/constants";
@@ -11,17 +12,17 @@ function defaultCounts(targetPlatforms) {
 
 function Stepper({ label, value, onChange }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg px-4 py-3 ring-1 ring-slate-200">
-      <span className="text-sm font-medium text-slate-800">{label}</span>
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-line px-4 py-3 transition-colors hover:bg-canvas">
+      <span className="text-sm font-medium text-graphite">{label}</span>
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="sm" aria-label={`Fewer ${label}`} disabled={value <= 0} onClick={() => onChange(value - 1)}>
-          −
+        <Button variant="secondary" size="sm" aria-label={`Fewer ${label}`} disabled={value <= 0} className="w-8 px-0" onClick={() => onChange(value - 1)}>
+          <Minus className="size-3.5" aria-hidden="true" />
         </Button>
         <span className="w-6 text-center text-sm font-semibold tabular-nums" aria-live="polite">
           {value}
         </span>
-        <Button variant="secondary" size="sm" aria-label={`More ${label}`} disabled={value >= 5} onClick={() => onChange(value + 1)}>
-          +
+        <Button variant="secondary" size="sm" aria-label={`More ${label}`} disabled={value >= 5} className="w-8 px-0" onClick={() => onChange(value + 1)}>
+          <Plus className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
     </div>

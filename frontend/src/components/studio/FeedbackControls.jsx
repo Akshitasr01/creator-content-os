@@ -1,3 +1,4 @@
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 
 import { FEEDBACK_REASONS } from "../../lib/constants";
@@ -30,20 +31,22 @@ export default function FeedbackControls({ status, onFeedback, disabled }) {
           aria-label="Thumbs up"
           title="Good output"
           disabled={disabled || sending}
+          className="w-8 px-0"
           onClick={() => send({ rating: "up" })}
         >
-          👍
+          <ThumbsUp className="size-4" aria-hidden="true" />
         </Button>
         <Button
-          variant={status === "disliked" ? "danger" : "ghost"}
+          variant={status === "disliked" ? "primary" : "ghost"}
           size="sm"
           aria-pressed={status === "disliked"}
           aria-label="Thumbs down"
           title="Needs work"
           disabled={disabled || sending}
+          className="w-8 px-0"
           onClick={() => setOpen(true)}
         >
-          👎
+          <ThumbsDown className="size-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -60,12 +63,12 @@ export default function FeedbackControls({ status, onFeedback, disabled }) {
             {FEEDBACK_REASONS.map((option) => (
               <label
                 key={option.value}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-slate-300 has-checked:bg-brand-50 has-checked:ring-brand-500"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:bg-mist has-checked:border-ink has-checked:bg-mist"
               >
                 <input
                   type="radio"
                   name="feedback-reason"
-                  className="accent-brand-600"
+                  className="accent-ink"
                   value={option.value}
                   checked={reason === option.value}
                   onChange={() => setReason(option.value)}

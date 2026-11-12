@@ -1,3 +1,4 @@
+import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
 import { useToast } from "../hooks/useToast";
@@ -19,7 +20,8 @@ export default function CopyButton({ text, label = "Copy", size = "sm", variant 
 
   return (
     <Button variant={variant} size={size} onClick={handleCopy} aria-live="polite">
-      {copied ? "Copied ✓" : label}
+      {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+      {copied ? "Copied" : label}
     </Button>
   );
 }

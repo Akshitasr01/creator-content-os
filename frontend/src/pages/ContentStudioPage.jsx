@@ -1,8 +1,9 @@
+import { Sparkles } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import AssetCard from "../components/studio/AssetCard";
-import { Alert, Button, EmptyState, PageHeader, PageSpinner } from "../components/ui";
+import { Alert, BackLink, Button, EmptyState, PageHeader, PageSpinner, Tabs } from "../components/ui";
 import { useApiData } from "../hooks/useApiData";
 import { CONTENT_TYPES } from "../lib/constants";
 import { api } from "../services/api";
@@ -46,61 +47,53 @@ export default function ContentStudioPage() {
     <>
       <PageHeader
         eyebrow={
-          <Link to={`/projects/${projectId}`} className="text-sm font-medium text-slate-500 hover:text-slate-800">
-            ← Brief & ideas
-          </Link>
+          <BackLink to={`/projects/${projectId}`}>Brief & ideas</BackLink>
         }
         title="Content Studio"
         description={`${project.title} · ${content.length} asset${content.length === 1 ? "" : "s"} · ${approved} approved`}
         actions={
           <Link
             to={`/projects/${projectId}`}
-            className="inline-flex h-10 items-center rounded-lg bg-white px-4 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-paper px-4 text-sm font-medium text-ink shadow-xs transition-colors hover:bg-mist"
           >
-            Generate more
+            <Sparkles className="size-4" aria-hidden="true" /> Generate more
           </Link>
         }
       />
 
       {content.length === 0 ? (
         <EmptyState
+          icon={Sparkles}
           title="No content generated yet"
           description="Analyze your source, pick ideas, then generate Reels, LinkedIn posts and carousels."
           action={
-            <Link to={`/projects/${projectId}`} className="inline-flex h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700">
+            <Link to={`/projects/${projectId}`} className="inline-flex h-10 items-center rounded-lg bg-ink px-4 text-sm font-medium text-paper hover:bg-graphite">
               Go to brief & ideas
             </Link>
           }
         />
       ) : (
         <>
-          <div className="mb-6 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter by content type">
-            {FILTERS.map((option) => {
-              const count = option.value === "all" ? content.length : content.filter((c) => c.content_type === option.value).length;
-              const active = filter === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setFilter(option.value)}
-                  className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                    active ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
-                  }`}
-                >
-                  {option.label} <span className="opacity-60">{count}</span>
-                </button>
-              );
-            })}
-          </div>
+          <Tabs
+            label="Filter by content type"
+            className="mb-8"
+            value={filter}
+            onChange={setFilter}
+            items={FILTERS.map((option) => ({
+              value: option.value,
+              label: option.label,
+              count: option.value === "all" ? content.length : content.filter((c) => c.content_type === option.value).length,
+            }))}
+          />
 
           <div className="space-y-10">
             {groups.map((group) => (
               <section key={group.type} aria-labelledby={`group-${group.type}`}>
-                <h2 id={`group-${group.type}`} className="mb-4 text-lg font-semibold text-slate-900">
+                <h2 id={`group-${group.type}`} className="mb-4 flex items-baseline gap-2 border-b border-line pb-3 text-[15px] font-semibold tracking-tight text-ink">
                   {CONTENT_TYPES[group.type].plural}
-                  <span className="ml-2 text-sm font-normal text-slate-500">{CONTENT_TYPES[group.type].platform}</span>
+                  <span className="text-[13px] font-normal text-muted">
+                    {CONTENT_TYPES[group.type].platform} · {group.items.length}
+                  </span>
                 </h2>
                 <div className="grid gap-6 xl:grid-cols-2">
                   {group.items.map((asset, index) => (

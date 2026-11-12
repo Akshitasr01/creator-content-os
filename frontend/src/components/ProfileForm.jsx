@@ -126,18 +126,18 @@ export default function ProfileForm({ profile, onSubmit, submitLabel, showPlatfo
             maxLength={500}
           />
           <fieldset className="sm:col-span-2">
-            <legend className="mb-1.5 text-sm font-medium text-slate-800">
-              Target platforms <span className="text-red-600">*</span>
+            <legend className="mb-1.5 text-sm font-medium text-graphite">
+              Target platforms <span className="text-muted">*</span>
             </legend>
             <div className="flex flex-wrap gap-3">
               {PLATFORMS.map((platform) => (
                 <label
                   key={platform.value}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-slate-300 has-checked:bg-brand-50 has-checked:ring-brand-500"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:bg-mist has-checked:border-ink has-checked:bg-mist"
                 >
                   <input
                     type="checkbox"
-                    className="size-4 accent-brand-600"
+                    className="size-4 accent-ink"
                     checked={form.target_platforms.includes(platform.value)}
                     onChange={() => togglePlatform(platform.value)}
                   />
@@ -145,7 +145,7 @@ export default function ProfileForm({ profile, onSubmit, submitLabel, showPlatfo
                 </label>
               ))}
             </div>
-            {errors.target_platforms && <p className="mt-1.5 text-sm text-red-600">{errors.target_platforms}</p>}
+            {errors.target_platforms && <p className="mt-1.5 text-sm text-danger">{errors.target_platforms}</p>}
           </fieldset>
         </div>
       </Card>
@@ -211,10 +211,10 @@ export default function ProfileForm({ profile, onSubmit, submitLabel, showPlatfo
       {showPlatformPreferences && (
         <Card>
           <CardHeader title="Platform preferences" description="Defaults applied whenever content is generated for a platform." />
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-line">
             {form.platform_preferences.map((preference) => (
               <div key={preference.platform} className="grid gap-4 p-5 sm:grid-cols-[8rem_10rem_1fr] sm:items-end">
-                <p className="text-sm font-semibold text-slate-900 sm:pb-2">
+                <p className="text-sm font-semibold text-ink sm:pb-2">
                   {PLATFORMS.find((p) => p.value === preference.platform)?.label}
                 </p>
                 <Select

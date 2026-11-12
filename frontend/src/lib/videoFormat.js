@@ -22,4 +22,4 @@ export function formatBytes(bytes) {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
-export const SOURCE_KIND_LABELS = { url: "Video link", upload: "Uploaded video", audio: "Audio" };
+export const SOURCE_KIND_LABELS = { url: "Video link", upload: "Uploaded video", audio: "Audio", youtube: "YouTube" };
